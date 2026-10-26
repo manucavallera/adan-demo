@@ -1,0 +1,68 @@
+import Link from "next/link";
+import { Truck, ArrowsClockwise, CreditCard, WhatsappLogo, InstagramLogo } from "@phosphor-icons/react/dist/ssr";
+import { formatPrice, store, waLink } from "@/lib/config";
+import { categories } from "@/lib/products";
+
+export function Footer() {
+  const info = [
+    {
+      icon: Truck,
+      title: "Envíos",
+      text: `A todo el país. Gratis desde ${formatPrice(store.freeShippingFrom)}.`,
+    },
+    { icon: ArrowsClockwise, title: "Cambios", text: "Tenés 30 días para cambiar talle o prenda." },
+    { icon: CreditCard, title: "Pagos", text: `${store.installments} con Mercado Pago. También transferencia o efectivo.` },
+  ];
+
+  return (
+    <footer className="border-t border-line bg-surface">
+      <div className="mx-auto max-w-7xl px-4 md:px-8">
+        <dl className="grid gap-6 border-b border-line py-10 sm:grid-cols-3">
+          {info.map(({ icon: Icon, title, text }) => (
+            <div key={title} className="flex gap-4">
+              <Icon size={26} className="shrink-0 text-accent" />
+              <div>
+                <dt className="font-semibold">{title}</dt>
+                <dd className="mt-1 text-sm text-muted">{text}</dd>
+              </div>
+            </div>
+          ))}
+        </dl>
+
+        <div className="flex flex-col gap-8 py-12 md:flex-row md:items-end md:justify-between">
+          <div>
+            <p className="font-display text-6xl uppercase md:text-8xl">{store.name}</p>
+            <p className="mt-2 text-muted">
+              {store.tagline}.
+              <br />
+              {store.address}, {store.city}.
+            </p>
+          </div>
+          <div className="flex flex-col gap-6 sm:flex-row sm:gap-16">
+            <ul className="space-y-2 text-sm">
+              {categories.map((c) => (
+                <li key={c.id}>
+                  <Link href={`/?cat=${c.id}#ropa`} className="text-muted hover:text-ink">
+                    {c.label}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <ul className="space-y-2 text-sm">
+              <li>
+                <a href={waLink(`Hola ${store.name}!`)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted hover:text-ink">
+                  <WhatsappLogo size={18} /> WhatsApp
+                </a>
+              </li>
+              <li>
+                <a href={`https://instagram.com/${store.instagram}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted hover:text-ink">
+                  <InstagramLogo size={18} /> Instagram
+                </a>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+}
