@@ -12,8 +12,10 @@ import {
   CheckCircle,
   BellRinging,
   ArrowsCounterClockwise,
+  Package,
+  ChartBar,
 } from "@phosphor-icons/react";
-import { products } from "@/lib/products";
+import { products, sizesOf } from "@/lib/products";
 import { formatPrice, store } from "@/lib/config";
 
 // Demo del asistente de WhatsApp. Se ve como un chat y por detrás usa la IA real (/api/chat).
@@ -21,6 +23,7 @@ import { formatPrice, store } from "@/lib/config";
 
 type Order = {
   cliente: string;
+  codigo: string;
   producto: string;
   talle: string;
   cantidad: string;
@@ -55,10 +58,20 @@ const SUGGESTIONS = [
   "¿Tenés el pantalón de vestir en 44?",
   "Tengo un casamiento, ¿qué me pongo?",
   "Hola! Quiero BER-001 talle 44",
+  "Mido 1,78 y peso 82, ¿qué talle de pantalón soy?",
   "¿Me hacés 30% de descuento?",
 ];
 
-const EMPTY_ORDER: Order = { cliente: "", producto: "", talle: "", cantidad: "", entrega: "", direccion: "", pago: "" };
+type Stock = Record<string, Record<string, number>>;
+type Alert = { text: string; time: string; kind: "aviso" | "pase" | "pago" | "stock" };
+
+const START_STOCK = (): Stock => Object.fromEntries(products.map((p) => [p.id, { ...p.stock }]));
+
+// Lo que ya pasó "hoy" antes de esta charla. Son números de ejemplo para que el resumen se vea
+// como el de un día normal; lo que hace el visitante en la demo se suma arriba.
+const DAY_BASE = { ventas: 3, monto: 104_700, consultas: 14, pasados: 1 };
+
+const EMPTY_ORDER: Order = { cliente: "", codigo: "", producto: "", talle: "", cantidad: "", entrega: "", direccion: "", pago: "" };
 const now = () => new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
 
 // Achica la foto antes de mandarla: más rápida y más barata.
@@ -92,8 +105,10 @@ export function BotDemo() {
     total: 0,
     estado: "Sin consultas",
   });
-  const [alerts, setAlerts] = useState<{ text: string; time: string; kind: "aviso" | "pase" | "pago" }[]>([]);
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [paid, setPaid] = useState(false);
+  const [stock, setStock] = useState<Stock>(START_STOCK);
+  const [sold, setSold] = useState<{ id: string; size: string } | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const busy = useRef(false);
@@ -169,6 +184,8 @@ export function BotDemo() {
     setAlerts([]);
     setPaid(false);
     setError("");
+    setStock(START_STOCK());
+    setSold(null);
   }
 
   function pay(total: number) {
@@ -177,7 +194,21 @@ export function BotDemo() {
     const t = now();
     setMsgs((m) => [...m, { role: "assistant", text: `Listo, nos llegó tu pago de ${formatPrice(total)}. Gracias! Te avisamos por acá cuando sale.`, time: t }]);
     setOrder((o) => ({ ...o, estado: "Pagado" }));
-    setAlerts((a) => [{ text: `Pago aprobado por ${formatPrice(total)}. El stock ya se descontó.`, time: t, kind: "pago" }, ...a]);
+
+    // Descuenta el stock de lo vendido y avisa si quedó poco.
+    const { codigo, talle, cantidad } = order.pedido;
+    const p = products.find((x) => x.id === codigo);
+    const news: Alert[] = [];
+    if (p && talle in stock[p.id]) {
+      const qty = Math.max(1, parseInt(cantidad, 10) || 1);
+      const left = Math.max(0, stock[p.id][talle] - qty);
+      setStock((s) => ({ ...s, [p.id]: { ...s[p.id], [talle]: left } }));
+      setSold({ id: p.id, size: talle });
+      if (left === 0) news.push({ text: `Se agotó ${p.name} talle ${talle}. ¿Reponés?`, time: t, kind: "stock" });
+      else if (left <= 2) news.push({ text: `Stock bajo: ${left === 1 ? "queda 1" : `quedan ${left}`} de ${p.name} talle ${talle}.`, time: t, kind: "stock" });
+    }
+    const where = p ? ` ${p.name}${talle ? ` talle ${talle}` : ""}.` : "";
+    setAlerts((a) => [...news, { text: `Pago aprobado por ${formatPrice(total)}.${where} El stock ya se descontó.`, time: t, kind: "pago" }, ...a]);
   }
 
   const unread = alerts.length;
@@ -331,7 +362,7 @@ export function BotDemo() {
                 </form>
               </>
             ) : (
-              <OwnerView order={order} alerts={alerts} />
+              <OwnerView order={order} alerts={alerts} stock={stock} sold={sold} msgs={msgs} paid={paid} />
             )}
           </motion.section>
         )}
@@ -405,9 +436,17 @@ function Bubble({ m, paid, onPay }: { m: Msg; paid: boolean; onPay: (total: numb
 function OwnerView({
   order,
   alerts,
+  stock,
+  sold,
+  msgs,
+  paid,
 }: {
   order: { pedido: Order; total: number; estado: string };
-  alerts: { text: string; time: string; kind: "aviso" | "pase" | "pago" }[];
+  alerts: Alert[];
+  stock: Stock;
+  sold: { id: string; size: string } | null;
+  msgs: Msg[];
+  paid: boolean;
 }) {
   const p = order.pedido;
   const rows: [string, string][] = [
@@ -455,6 +494,8 @@ function OwnerView({
                 >
                   {a.kind === "pago" ? (
                     <CheckCircle size={20} weight="fill" className="shrink-0 text-accent" />
+                  ) : a.kind === "stock" ? (
+                    <Package size={20} weight="fill" className="shrink-0 text-accent" />
                   ) : (
                     <BellRinging size={20} className="shrink-0 text-accent" />
                   )}
@@ -466,6 +507,107 @@ function OwnerView({
           </ul>
         )}
       </div>
+
+      <DaySummary stock={stock} msgs={msgs} paid={paid} total={order.total} handoffs={alerts.filter((a) => a.kind === "pase").length} />
+
+      <StockList stock={stock} sold={sold} />
+    </div>
+  );
+}
+
+// Resumen que le llegaría al dueño por WhatsApp todas las noches.
+function DaySummary({ stock, msgs, paid, total, handoffs }: { stock: Stock; msgs: Msg[]; paid: boolean; total: number; handoffs: number }) {
+  const ventas = DAY_BASE.ventas + (paid ? 1 : 0);
+  const monto = DAY_BASE.monto + (paid ? total : 0);
+  const consultas = DAY_BASE.consultas + (msgs.some((m) => m.role === "user") ? 1 : 0);
+  const pasados = DAY_BASE.pasados + handoffs;
+
+  // Lo más consultado en esta charla; si todavía no hay nada, el del día de ejemplo.
+  const counts = new Map<string, number>();
+  msgs.forEach((m) => m.productos?.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1)));
+  const topId = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "PAN-001";
+  const top = products.find((p) => p.id === topId)!;
+
+  const low = products.flatMap((p) =>
+    sizesOf(p)
+      .filter((s) => stock[p.id][s] <= 1)
+      .map((s) => `${p.name} ${s === "Único" ? "" : `talle ${s} `}(${stock[p.id][s] === 0 ? "agotado" : "queda 1"})`),
+  );
+
+  return (
+    <div>
+      <p className="mb-3 flex items-center gap-2 font-semibold">
+        <ChartBar size={20} className="text-accent" /> Resumen del día
+      </p>
+      <div className="bg-[#efeae2] p-3 dark:bg-[#0b141a]">
+        <div className="max-w-[92%] bg-white px-3 pt-2 pb-1 text-[14px] leading-snug text-[#111b21] shadow-sm dark:bg-[#202c33] dark:text-[#e9edef]">
+          <p className="font-semibold">Resumen de hoy en {store.name}</p>
+          <ul className="mt-1 space-y-0.5">
+            <li>
+              Ventas: <b className="tabular-nums">{ventas}</b> por <b className="tabular-nums">{formatPrice(monto)}</b>
+            </li>
+            <li>
+              Clientes atendidos por el asistente: <b className="tabular-nums">{consultas}</b>
+            </li>
+            <li>
+              Te pasé <b className="tabular-nums">{pasados}</b> {pasados === 1 ? "cliente" : "clientes"} para atender vos
+            </li>
+            <li>
+              Lo más consultado: <b>{top.name}</b>
+            </li>
+          </ul>
+          {low.length > 0 && (
+            <>
+              <p className="mt-2 font-semibold">Para reponer</p>
+              <ul className="space-y-0.5">
+                {low.slice(0, 4).map((l) => (
+                  <li key={l}>- {l}</li>
+                ))}
+              </ul>
+            </>
+          )}
+          <p className="mt-0.5 text-right text-[11px] text-[#667781] dark:text-[#8696a0]">21:00</p>
+        </div>
+      </div>
+      <p className="mt-2 text-xs text-muted">Te llega todas las noches. Los números de antes de esta charla son de ejemplo.</p>
+    </div>
+  );
+}
+
+// Stock por talle. Se descuenta solo con cada venta, de la web o del WhatsApp.
+function StockList({ stock, sold }: { stock: Stock; sold: { id: string; size: string } | null }) {
+  return (
+    <div>
+      <p className="mb-1 flex items-center gap-2 font-semibold">
+        <Package size={20} className="text-accent" /> Stock
+      </p>
+      <p className="mb-3 text-xs text-muted">Se descuenta solo con cada venta. En marrón, lo que está por agotarse.</p>
+      <ul className="divide-y divide-line border-y border-line text-sm">
+        {products.map((p) => (
+          <li key={p.id} className="flex items-center justify-between gap-3 py-2">
+            <span className="min-w-0 truncate">{p.name}</span>
+            <span className="flex shrink-0 gap-1">
+              {sizesOf(p).map((s) => {
+                const n = stock[p.id][s];
+                const hit = sold?.id === p.id && sold.size === s;
+                return (
+                  <motion.span
+                    key={`${s}-${n}`}
+                    initial={hit ? { scale: 1.4 } : false}
+                    animate={{ scale: 1 }}
+                    title={`Talle ${s}`}
+                    className={`inline-flex h-7 min-w-9 items-center justify-center px-1 text-xs tabular-nums ${
+                      n === 0 ? "bg-line text-muted line-through" : n <= 2 ? "bg-accent text-on-accent" : "border border-line"
+                    } ${hit ? "ring-2 ring-ink" : ""}`}
+                  >
+                    {s === "Único" ? "U" : s}·{n}
+                  </motion.span>
+                );
+              })}
+            </span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

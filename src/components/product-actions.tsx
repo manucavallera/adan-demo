@@ -73,6 +73,12 @@ export function ProductActions({ product }: { product: Product }) {
           );
         })}
       </div>
+      <WaLink
+        message={`Hola! Quiero ${product.name} (${product.id}) pero no sé qué talle soy.`}
+        className="mt-3 inline-block text-sm font-medium underline underline-offset-4 hover:text-accent"
+      >
+        ¿No sabés tu talle? Te lo decimos por WhatsApp
+      </WaLink>
       {error && (
         <p role="alert" className="mt-2 text-sm font-medium text-accent">
           Elegí un talle para seguir.
