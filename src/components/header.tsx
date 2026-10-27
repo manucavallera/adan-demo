@@ -25,7 +25,7 @@ export function Header() {
             <Link
               key={c.id}
               href={`/?cat=${c.id}#ropa`}
-              className="text-sm font-medium text-muted transition-colors hover:text-ink"
+              className="py-3 text-sm font-medium text-muted transition-colors hover:text-ink"
             >
               {c.label}
             </Link>

@@ -29,23 +29,23 @@ export default function Home() {
         <HeroMotion className="md:col-span-7">
           <HeroTitle
             text="Ropa de hombre, formal y urbana"
-            className="font-display text-5xl leading-[1] uppercase sm:text-6xl md:text-6xl lg:text-7xl xl:text-8xl"
+            className="font-display text-[clamp(2.75rem,13vw,3rem)] leading-[1] uppercase sm:text-6xl md:text-6xl lg:text-7xl xl:text-8xl"
           />
           <p className="mt-6 max-w-[42ch] text-lg leading-relaxed text-muted">
             {store.installments} y envíos a todo el país. Comprá acá o
             escribinos por WhatsApp.
           </p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
               href="#ropa"
-              className="flex h-13 items-center gap-2 bg-accent px-7 font-semibold text-on-accent transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
+              className="flex h-13 items-center justify-center gap-2 bg-accent px-7 font-semibold text-on-accent transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
             >
               Ver la ropa
               <ArrowRight size={18} weight="bold" />
             </Link>
             <WaLink
               message={`Hola ${store.name}! Quiero hacer una consulta.`}
-              className="flex h-13 items-center gap-2 border border-ink px-7 font-semibold transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
+              className="flex h-13 items-center justify-center gap-2 border border-ink px-7 font-semibold transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
             >
               <WhatsappLogo size={20} weight="fill" />
               Escribinos
@@ -178,9 +178,10 @@ export default function Home() {
               href={`https://instagram.com/${store.instagram}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-6 inline-flex h-13 items-center gap-2 border border-ink px-6 font-semibold transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
+              className="mt-6 inline-flex h-13 max-w-full items-center gap-2 border border-ink px-6 font-semibold transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
             >
-              <InstagramLogo size={20} />@{store.instagram}
+              <InstagramLogo size={20} className="shrink-0" />
+              <span className="truncate">@{store.instagram}</span>
             </a>
           </Reveal>
         </div>

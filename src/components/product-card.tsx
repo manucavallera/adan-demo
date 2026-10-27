@@ -17,13 +17,13 @@ export function ProductCard({ product, priority }: { product: Product; priority?
           sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
           className="object-cover transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover:scale-[1.04]"
         />
-      </div>
-      <div className="mt-3 flex items-start justify-between gap-3">
-        <h3 className="text-sm leading-snug font-semibold md:text-base">{product.name}</h3>
         {product.isNew && (
-          <span className="shrink-0 text-xs font-semibold text-accent">Nuevo</span>
+          <span className="absolute top-2 left-2 bg-accent px-2 py-1 text-xs font-semibold tracking-wide text-on-accent uppercase">
+            Nuevo
+          </span>
         )}
       </div>
+      <h3 className="mt-3 text-sm leading-snug font-semibold md:text-base">{product.name}</h3>
       <p className="mt-1 text-sm tabular-nums text-muted md:text-base">
         {soldOut ? "Agotado" : formatPrice(product.price)}
       </p>

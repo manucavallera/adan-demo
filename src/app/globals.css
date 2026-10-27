@@ -81,3 +81,10 @@ body {
     animation: none;
   }
 }
+
+/* Deja lugar para la barra de compra fija de la ficha en celu. */
+@media (max-width: 767px) {
+  body:has([data-buy-bar]) {
+    padding-bottom: 5.5rem;
+  }
+}

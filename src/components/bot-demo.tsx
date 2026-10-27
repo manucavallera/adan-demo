@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
@@ -112,6 +113,9 @@ export function BotDemo() {
   const scroller = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const busy = useRef(false);
+  // En la ficha y el checkout ya hay botón de WhatsApp: en celu no hace falta el flotante.
+  const pathname = usePathname();
+  const hideOnMobile = pathname.startsWith("/producto/") || pathname.startsWith("/checkout");
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -226,10 +230,11 @@ export function BotDemo() {
             whileHover={{ y: -3 }}
             whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 400, damping: 22, delay: 0.8 }}
-            className="fixed right-4 bottom-28 z-30 flex h-14 cursor-pointer items-center gap-2 bg-accent pr-5 pl-4 font-semibold text-on-accent shadow-[0_12px_32px_-8px_rgba(30,25,21,0.45)] md:right-8 md:bottom-8"
+            aria-label="Probá el asistente"
+            className={`fixed right-4 bottom-4 z-30 h-14 w-14 cursor-pointer items-center justify-center gap-2 rounded-full bg-accent font-semibold text-on-accent shadow-[0_12px_32px_-8px_rgba(30,25,21,0.45)] md:right-8 md:bottom-8 md:flex md:w-auto md:rounded-none md:pr-5 md:pl-4 ${hideOnMobile ? "hidden" : "flex"}`}
           >
-            <ChatCircleText size={24} weight="fill" />
-            Probá el asistente
+            <ChatCircleText size={26} weight="fill" />
+            <span className="hidden md:inline">Probá el asistente</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -458,8 +463,20 @@ function OwnerView({
     ["Dirección", p.direccion],
     ["Pago", p.pago],
   ];
+  const idle = msgs.length === 0;
+  const summary = <DaySummary stock={stock} msgs={msgs} paid={paid} total={order.total} handoffs={alerts.filter((a) => a.kind === "pase").length} />;
+  const stockList = <StockList stock={stock} sold={sold} />;
   return (
     <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+      {idle && (
+        <>
+          <p className="border border-line bg-surface p-3 text-sm text-muted">
+            Así ves tu negocio desde el celular. Escribí en «Lo que ve el cliente» y mirá cómo se arma el pedido acá.
+          </p>
+          {summary}
+          {stockList}
+        </>
+      )}
       <div>
         <p className="text-sm text-muted">Estado de la venta</p>
         <motion.p key={order.estado} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="font-display text-3xl uppercase">
@@ -508,9 +525,12 @@ function OwnerView({
         )}
       </div>
 
-      <DaySummary stock={stock} msgs={msgs} paid={paid} total={order.total} handoffs={alerts.filter((a) => a.kind === "pase").length} />
-
-      <StockList stock={stock} sold={sold} />
+      {!idle && (
+        <>
+          {summary}
+          {stockList}
+        </>
+      )}
     </div>
   );
 }

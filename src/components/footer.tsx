@@ -39,23 +39,23 @@ export function Footer() {
             </p>
           </div>
           <div className="flex flex-col gap-6 sm:flex-row sm:gap-16">
-            <ul className="space-y-2 text-sm">
+            <ul className="text-sm">
               {categories.map((c) => (
                 <li key={c.id}>
-                  <Link href={`/?cat=${c.id}#ropa`} className="text-muted hover:text-ink">
+                  <Link href={`/?cat=${c.id}#ropa`} className="inline-flex min-h-11 items-center text-muted hover:text-ink">
                     {c.label}
                   </Link>
                 </li>
               ))}
             </ul>
-            <ul className="space-y-2 text-sm">
+            <ul className="text-sm">
               <li>
-                <a href={waLink(`Hola ${store.name}!`)} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted hover:text-ink">
+                <a href={waLink(`Hola ${store.name}!`)} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-2 text-muted hover:text-ink">
                   <WhatsappLogo size={18} /> WhatsApp
                 </a>
               </li>
               <li>
-                <a href={`https://instagram.com/${store.instagram}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 text-muted hover:text-ink">
+                <a href={`https://instagram.com/${store.instagram}`} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-2 text-muted hover:text-ink">
                   <InstagramLogo size={18} /> Instagram
                 </a>
               </li>

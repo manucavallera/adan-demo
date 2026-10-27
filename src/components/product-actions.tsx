@@ -4,7 +4,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { HandbagSimple, WhatsappLogo } from "@phosphor-icons/react";
 import { sizesOf, type Product, type Size } from "@/lib/products";
-import { store } from "@/lib/config";
+import { formatPrice, store } from "@/lib/config";
 import { WaLink } from "./wa-link";
 import { useCart } from "./cart";
 
@@ -75,7 +75,7 @@ export function ProductActions({ product }: { product: Product }) {
       </div>
       <WaLink
         message={`Hola! Quiero ${product.name} (${product.id}) pero no sé qué talle soy.`}
-        className="mt-3 inline-block text-sm font-medium underline underline-offset-4 hover:text-accent"
+        className="mt-1 inline-flex min-h-11 items-center text-sm font-medium underline underline-offset-4 hover:text-accent"
       >
         ¿No sabés tu talle? Te lo decimos por WhatsApp
       </WaLink>
@@ -85,21 +85,26 @@ export function ProductActions({ product }: { product: Product }) {
         </p>
       )}
 
-      <div className="sticky bottom-0 z-10 -mx-4 mt-6 flex flex-col gap-3 border-t border-line bg-canvas/95 px-4 py-4 backdrop-blur md:static md:mx-0 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none">
+      {/* En celu queda fija abajo; en compu va en la ficha. */}
+      <div
+        data-buy-bar
+        className="fixed inset-x-0 bottom-0 z-20 flex gap-2 border-t border-line bg-canvas/95 px-4 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur md:static md:mt-6 md:flex-col md:gap-3 md:border-0 md:bg-transparent md:p-0 md:backdrop-blur-none"
+      >
         <button
           type="button"
           onClick={buy}
-          className="flex h-13 cursor-pointer items-center justify-center gap-2 bg-accent font-semibold text-on-accent transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
+          className="flex h-13 flex-1 cursor-pointer items-center justify-center gap-2 bg-accent font-semibold text-on-accent transition-transform hover:-translate-y-0.5 active:scale-[0.98] md:flex-none"
         >
           <HandbagSimple size={20} weight="bold" />
-          Comprar ahora
+          Comprar<span className="hidden md:inline"> ahora</span>
+          <span className="font-normal opacity-80 md:hidden">· {formatPrice(product.price)}</span>
         </button>
         <WaLink
           message={waMessage}
-          className="flex h-13 items-center justify-center gap-2 border border-ink font-semibold transition-transform hover:-translate-y-0.5 active:scale-[0.98]"
+          className="flex h-13 w-13 shrink-0 items-center justify-center gap-2 border border-ink font-semibold transition-transform hover:-translate-y-0.5 active:scale-[0.98] md:w-auto"
         >
-          <WhatsappLogo size={20} weight="fill" />
-          Consultar por WhatsApp
+          <WhatsappLogo size={22} weight="fill" />
+          <span className="sr-only md:not-sr-only">Consultar por WhatsApp</span>
         </WaLink>
       </div>
     </div>
