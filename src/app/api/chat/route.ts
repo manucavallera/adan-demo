@@ -81,7 +81,27 @@ function valid(msgs: unknown): msgs is InMsg[] {
 
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 
+// Freno simple para la demo pública: máximo de mensajes por IP por hora.
+// Vive en memoria, así que es por instancia del servidor; alcanza para evitar abusos.
+const LIMIT = 30;
+const WINDOW = 60 * 60 * 1000;
+const hits = new Map<string, { count: number; reset: number }>();
+
+function limited(req: Request) {
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0].trim() || req.headers.get("x-real-ip") || "local";
+  const now = Date.now();
+  const entry = hits.get(ip);
+  if (!entry || now > entry.reset) {
+    if (hits.size > 5000) hits.clear();
+    hits.set(ip, { count: 1, reset: now + WINDOW });
+    return false;
+  }
+  entry.count++;
+  return entry.count > LIMIT;
+}
+
 export async function POST(req: Request) {
+  if (limited(req)) return json({ error: "Llegaste al límite de mensajes de la demo, probá en un rato" }, 429);
   let body: { messages?: unknown };
   try {
     body = await req.json();
