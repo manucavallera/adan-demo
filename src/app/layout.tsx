@@ -1,11 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Anton, Epilogue } from "next/font/google";
 import "./globals.css";
-import { CartProvider } from "@/components/cart";
-import { Header } from "@/components/header";
-import { CartDrawer } from "@/components/cart-drawer";
-import { Footer } from "@/components/footer";
-import { BotDemo } from "@/components/bot-demo";
 import { store } from "@/lib/config";
 
 const anton = Anton({ variable: "--font-anton", weight: "400", subsets: ["latin"] });
@@ -26,15 +21,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="es-AR">
-      <body className={`${anton.variable} ${epilogue.variable} font-sans antialiased`}>
-        <CartProvider>
-          <Header />
-          {children}
-          <Footer />
-          <CartDrawer />
-          <BotDemo />
-        </CartProvider>
-      </body>
+      <body className={`${anton.variable} ${epilogue.variable} font-sans antialiased`}>{children}</body>
     </html>
   );
 }

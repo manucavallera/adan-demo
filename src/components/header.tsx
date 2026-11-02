@@ -12,9 +12,11 @@ export function Header() {
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 backdrop-blur-md">
-      <p className="bg-ink px-4 py-2 text-center text-xs font-medium text-canvas">
-        Demo de tienda. Los pagos están simulados.
-      </p>
+      {store.demoBot && (
+        <p className="bg-ink px-4 py-2 text-center text-xs font-medium text-canvas">
+          Demo de tienda. Los pagos están simulados.
+        </p>
+      )}
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 md:px-8">
         <Link href="/" className="font-display text-3xl tracking-wide uppercase">
           {store.name}

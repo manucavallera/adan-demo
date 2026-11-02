@@ -1,0 +1,113 @@
+// Base de datos de la tienda. La carga el dueño desde el panel (/admin);
+// la web y el bot de WhatsApp leen de acá.
+
+generator client {
+  provider      = "prisma-client-js"
+  // "linux-musl-openssl-3.0.x" es la imagen node:alpine del Dockerfile.
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Product {
+  id          String    @id // código que ve el cliente y usa el bot, ej: REM-001
+  slug        String    @unique
+  name        String
+  category    String
+  price       Int
+  color       String    @default("")
+  description String    @default("")
+  images      String[] // rutas de las fotos; la primera es la principal
+  isNew       Boolean   @default(false)
+  active      Boolean   @default(true) // false = pausada: no se ve en la web ni la ofrece el bot
+  sort        Int       @default(0)
+  variants    Variant[]
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+// Un talle de una prenda con su stock.
+model Variant {
+  id        Int     @id @default(autoincrement())
+  productId String
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  size      String
+  stock     Int     @default(0)
+  sort      Int     @default(0)
+
+  @@unique([productId, size])
+}
+
+enum OrderStatus {
+  PENDIENTE
+  PAGADO
+  ENVIADO
+  ENTREGADO
+  CANCELADO
+}
+
+model Order {
+  id           Int         @id @default(autoincrement())
+  status       OrderStatus @default(PENDIENTE)
+  source       String      @default("web") // web o whatsapp
+  name         String
+  phone        String
+  delivery     String // envio o retiro
+  address      String      @default("")
+  city         String      @default("")
+  zip          String      @default("")
+  payment      String // mercadopago, transferencia o efectivo
+  notes        String      @default("")
+  subtotal     Int
+  shipping     Int
+  discount     Int         @default(0)
+  total        Int
+  stockApplied Boolean     @default(false) // true cuando ya se descontó el stock
+  mpPaymentId  String?
+  items        OrderItem[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+// Copia de la prenda al momento de la compra (si después cambia el precio, el pedido no cambia).
+model OrderItem {
+  id        Int    @id @default(autoincrement())
+  orderId   Int
+  order     Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  productId String
+  name      String
+  size      String
+  qty       Int
+  price     Int
+}
+
+// Configuración de la tienda: una sola fila (id 1).
+model Settings {
+  id               Int    @id @default(1)
+  whatsapp         String @default("") // formato internacional sin +, ej: 5493431234567
+  address          String @default("")
+  city             String @default("")
+  hours            String @default("")
+  installments     String @default("")
+  shippingCost     Int    @default(0)
+  freeShippingFrom Int    @default(0) // 0 = sin envío gratis
+  transferDiscount Int    @default(0) // porcentaje
+  transferAlias    String @default("")
+  transferCbu      String @default("")
+  transferHolder   String @default("")
+}
+
+// Charla del bot de WhatsApp con un cliente.
+model BotChat {
+  jid         String    @id // id del chat en WhatsApp
+  name        String    @default("")
+  phone       String    @default("")
+  history     Json      @default("[]")
+  pausedUntil DateTime?
+  handoff     String    @default("") // motivo por el que el bot se lo pasó al dueño
+  lastAt      DateTime  @default(now())
+  createdAt   DateTime  @default(now())
+}

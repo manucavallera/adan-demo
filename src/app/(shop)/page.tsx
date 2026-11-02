@@ -7,6 +7,7 @@ import {
   InstagramLogo,
 } from "@phosphor-icons/react/dist/ssr";
 import { categories } from "@/lib/products";
+import { getShop } from "@/lib/shop";
 import { store } from "@/lib/config";
 import { WaLink } from "@/components/wa-link";
 import { Catalog } from "@/components/catalog";
@@ -19,7 +20,8 @@ import {
   Parallax,
 } from "@/components/motion-bits";
 
-export default function Home() {
+export default async function Home() {
+  const { settings } = await getShop();
   const [featured, ...rest] = categories;
 
   return (
@@ -32,7 +34,7 @@ export default function Home() {
             className="font-display text-[clamp(2.75rem,13vw,3rem)] leading-[1] uppercase sm:text-6xl md:text-6xl lg:text-7xl xl:text-8xl"
           />
           <p className="mt-6 max-w-[42ch] text-lg leading-relaxed text-muted">
-            {store.installments} y envíos a todo el país. Comprá acá o
+            {settings.installments ? `${settings.installments} y envíos` : "Envíos"} a todo el país. Comprá acá o
             escribinos por WhatsApp.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -63,11 +65,11 @@ export default function Home() {
 
       <Marquee
         items={[
-          store.installments,
+          settings.installments,
           "Envíos a todo el país",
-          `${store.address}, Viale`,
+          settings.address && `${settings.address}, Viale`,
           "Formal y urbano",
-        ]}
+        ].filter(Boolean)}
       />
 
       {/* Categorías */}
@@ -172,7 +174,7 @@ export default function Home() {
             </h2>
             <p className="mt-4 text-muted">
               Ingresos, combinaciones y ofertas. Y si pasás por Viale, te
-              esperamos en {store.address}.
+              esperamos en {settings.address || "el local"}.
             </p>
             <a
               href={`https://instagram.com/${store.instagram}`}

@@ -2,6 +2,7 @@
 // pedido. La llamada a la IA está en src/lib/bot.ts y la comparte con WhatsApp.
 import Anthropic from "@anthropic-ai/sdk";
 import { askBot, RefusalError, type InMsg } from "@/lib/bot";
+import { getShop } from "@/lib/shop";
 
 export const runtime = "nodejs";
 
@@ -54,7 +55,7 @@ export async function POST(req: Request) {
   if (!valid(body.messages)) return json({ error: "Conversación inválida o demasiado larga" }, 400);
 
   try {
-    return json(await askBot(body.messages, "web"));
+    return json(await askBot(body.messages, "web", await getShop()));
   } catch (error) {
     if (error instanceof RefusalError) return json({ error: "El asistente no pudo responder eso" }, 422);
     if (error instanceof Anthropic.RateLimitError) return json({ error: "Muchas consultas juntas, probá en un ratito" }, 429);

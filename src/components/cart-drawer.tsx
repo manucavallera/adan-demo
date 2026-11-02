@@ -6,12 +6,13 @@ import { useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Minus, Plus, X, WhatsappLogo } from "@phosphor-icons/react";
 import { useCart, cartToWhatsApp } from "./cart";
-import { products } from "@/lib/products";
-import { formatPrice, store } from "@/lib/config";
+import { formatPrice } from "@/lib/config";
+import { useShop } from "./shop";
 import { WaLink } from "./wa-link";
 
 export function CartDrawer() {
   const { lines, open, setOpen, setQty, subtotal, shipping } = useCart();
+  const { products, settings } = useShop();
 
   useEffect(() => {
     if (!open) return;
@@ -24,7 +25,7 @@ export function CartDrawer() {
     };
   }, [open, setOpen]);
 
-  const missing = store.freeShippingFrom - subtotal;
+  const missing = settings.freeShippingFrom > 0 ? settings.freeShippingFrom - subtotal : 0;
 
   return (
     <AnimatePresence>
@@ -135,7 +136,7 @@ export function CartDrawer() {
                     Finalizar compra
                   </Link>
                   <WaLink
-                    message={cartToWhatsApp(lines)}
+                    message={cartToWhatsApp(lines, products)}
                     className="flex h-13 items-center justify-center gap-2 border border-ink font-semibold transition-transform active:scale-[0.98]"
                   >
                     <WhatsappLogo size={20} weight="fill" />

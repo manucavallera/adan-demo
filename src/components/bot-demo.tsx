@@ -16,7 +16,8 @@ import {
   Package,
   ChartBar,
 } from "@phosphor-icons/react";
-import { products, sizesOf } from "@/lib/products";
+import { sizesOf, type Product } from "@/lib/products";
+import { useShop } from "./shop";
 import { formatPrice, store } from "@/lib/config";
 
 // Demo del asistente de WhatsApp. Se ve como un chat y por detrás usa la IA real (/api/chat).
@@ -66,7 +67,7 @@ const SUGGESTIONS = [
 type Stock = Record<string, Record<string, number>>;
 type Alert = { text: string; time: string; kind: "aviso" | "pase" | "pago" | "stock" };
 
-const START_STOCK = (): Stock => Object.fromEntries(products.map((p) => [p.id, { ...p.stock }]));
+const START_STOCK = (products: Product[]): Stock => Object.fromEntries(products.map((p) => [p.id, { ...p.stock }]));
 
 // Lo que ya pasó "hoy" antes de esta charla. Son números de ejemplo para que el resumen se vea
 // como el de un día normal; lo que hace el visitante en la demo se suma arriba.
@@ -95,6 +96,7 @@ export function openBot(text?: string) {
 }
 
 export function BotDemo() {
+  const { products } = useShop();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"chat" | "owner">("chat");
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -108,7 +110,7 @@ export function BotDemo() {
   });
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [paid, setPaid] = useState(false);
-  const [stock, setStock] = useState<Stock>(START_STOCK);
+  const [stock, setStock] = useState<Stock>(() => START_STOCK(products));
   const [sold, setSold] = useState<{ id: string; size: string } | null>(null);
   const scroller = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -188,7 +190,7 @@ export function BotDemo() {
     setAlerts([]);
     setPaid(false);
     setError("");
-    setStock(START_STOCK());
+    setStock(START_STOCK(products));
     setSold(null);
   }
 
@@ -377,6 +379,7 @@ export function BotDemo() {
 }
 
 function Bubble({ m, paid, onPay }: { m: Msg; paid: boolean; onPay: (total: number) => void }) {
+  const { products, settings } = useShop();
   const mine = m.role === "user";
   return (
     <motion.div
@@ -416,7 +419,7 @@ function Bubble({ m, paid, onPay }: { m: Msg; paid: boolean; onPay: (total: numb
           <p className="text-xs text-[#667781] dark:text-[#8696a0]">mercadopago.com.ar</p>
           <p className="font-semibold">Pagá tu pedido de {store.name}</p>
           <p className="text-sm">
-            {formatPrice(m.pay)} · {store.installments}
+            {formatPrice(m.pay)}{settings.installments && ` · ${settings.installments}`}
           </p>
           <button
             type="button"
@@ -537,6 +540,7 @@ function OwnerView({
 
 // Resumen que le llegaría al dueño por WhatsApp todas las noches.
 function DaySummary({ stock, msgs, paid, total, handoffs }: { stock: Stock; msgs: Msg[]; paid: boolean; total: number; handoffs: number }) {
+  const { products } = useShop();
   const ventas = DAY_BASE.ventas + (paid ? 1 : 0);
   const monto = DAY_BASE.monto + (paid ? total : 0);
   const consultas = DAY_BASE.consultas + (msgs.some((m) => m.role === "user") ? 1 : 0);
@@ -546,11 +550,11 @@ function DaySummary({ stock, msgs, paid, total, handoffs }: { stock: Stock; msgs
   const counts = new Map<string, number>();
   msgs.forEach((m) => m.productos?.forEach((id) => counts.set(id, (counts.get(id) ?? 0) + 1)));
   const topId = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "PAN-001";
-  const top = products.find((p) => p.id === topId)!;
+  const top = products.find((p) => p.id === topId) ?? products[0];
 
   const low = products.flatMap((p) =>
     sizesOf(p)
-      .filter((s) => stock[p.id][s] <= 1)
+      .filter((s) => (stock[p.id]?.[s] ?? 0) <= 1)
       .map((s) => `${p.name} ${s === "Único" ? "" : `talle ${s} `}(${stock[p.id][s] === 0 ? "agotado" : "queda 1"})`),
   );
 
@@ -596,6 +600,7 @@ function DaySummary({ stock, msgs, paid, total, handoffs }: { stock: Stock; msgs
 
 // Stock por talle. Se descuenta solo con cada venta, de la web o del WhatsApp.
 function StockList({ stock, sold }: { stock: Stock; sold: { id: string; size: string } | null }) {
+  const { products } = useShop();
   return (
     <div>
       <p className="mb-1 flex items-center gap-2 font-semibold">
@@ -608,7 +613,7 @@ function StockList({ stock, sold }: { stock: Stock; sold: { id: string; size: st
             <span className="min-w-0 truncate">{p.name}</span>
             <span className="flex shrink-0 gap-1">
               {sizesOf(p).map((s) => {
-                const n = stock[p.id][s];
+                const n = stock[p.id]?.[s] ?? 0;
                 const hit = sold?.id === p.id && sold.size === s;
                 return (
                   <motion.span

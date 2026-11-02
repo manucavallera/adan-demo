@@ -31,9 +31,11 @@ export async function sendText(to: string, text: string, delay = 1200) {
 }
 
 export async function sendImage(to: string, imageUrl: string, caption: string) {
-  const fileName = imageUrl.split("/").pop() || "foto.jpg";
-  const mimetype = fileName.endsWith(".png") ? "image/png" : fileName.endsWith(".webp") ? "image/webp" : "image/jpeg";
-  const res = await call<Sent>("/message/sendMedia", { number: to, mediatype: "image", mimetype, caption, media: imageUrl, fileName });
+  // Las fotos subidas desde el panel son WebP: se piden en JPG para que WhatsApp no las tome como sticker.
+  const url = imageUrl.endsWith(".webp") ? `${imageUrl}?jpg=1` : imageUrl;
+  const base = (imageUrl.split("/").pop() || "foto").replace(/\.webp$/, ".jpg");
+  const mimetype = base.endsWith(".png") ? "image/png" : "image/jpeg";
+  const res = await call<Sent>("/message/sendMedia", { number: to, mediatype: "image", mimetype, caption, media: url, fileName: base });
   return res.key?.id;
 }
 

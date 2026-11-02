@@ -5,12 +5,13 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CircleNotch, Lock, WhatsappLogo } from "@phosphor-icons/react";
+import { useShop } from "@/components/shop";
 import { useCart, cartToWhatsApp } from "@/components/cart";
-import { products } from "@/lib/products";
-import { formatPrice, store } from "@/lib/config";
+import { formatPrice, shippingFor } from "@/lib/config";
 import { WaLink } from "@/components/wa-link";
 
 type Delivery = "envio" | "retiro";
+type Payment = "mercadopago" | "transferencia" | "efectivo";
 type Errors = Partial<Record<"name" | "phone" | "address" | "city" | "zip", string>>;
 
 const input =
@@ -19,14 +20,20 @@ const input =
 export default function CheckoutPage() {
   const router = useRouter();
   const { lines, subtotal, clear } = useCart();
+  const { products, settings } = useShop();
   const [delivery, setDelivery] = useState<Delivery>("envio");
+  const [payment, setPayment] = useState<Payment>("mercadopago");
+  const [serverError, setServerError] = useState("");
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", zip: "" });
   const [errors, setErrors] = useState<Errors>({});
   const [paying, setPaying] = useState(false);
 
-  const shipping =
-    delivery === "retiro" || subtotal >= store.freeShippingFrom ? 0 : store.shippingCost;
-  const total = subtotal + shipping;
+  const shipping = delivery === "retiro" ? 0 : shippingFor(subtotal, settings);
+  const discount =
+    payment === "transferencia" && settings.transferDiscount > 0
+      ? Math.round((subtotal * settings.transferDiscount) / 100)
+      : 0;
+  const total = subtotal - discount + shipping;
 
   const set = (k: keyof typeof form) => (e: React.ChangeEvent<HTMLInputElement>) => {
     setForm((f) => ({ ...f, [k]: e.target.value }));
@@ -49,16 +56,31 @@ export default function CheckoutPage() {
     return !first;
   }
 
-  // Demo: simula el paso por Mercado Pago. En la versión real acá se crea la preferencia
-  // de pago en el servidor y se redirige al checkout de Mercado Pago.
+  // Guarda el pedido (el servidor recalcula precios y reserva el stock) y pasa a la página de gracias.
   async function pay(e: React.FormEvent) {
     e.preventDefault();
     if (!validate()) return;
     setPaying(true);
-    await new Promise((r) => setTimeout(r, 1400));
-    const order = `CU-${Math.floor(1000 + Math.random() * 9000)}`;
-    clear();
-    router.push(`/gracias?pedido=${order}&nombre=${encodeURIComponent(form.name.split(" ")[0])}`);
+    setServerError("");
+    try {
+      const res = await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...form,
+          delivery,
+          payment,
+          items: lines.map((l) => ({ id: l.id, size: l.size, qty: l.qty })),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "No pudimos guardar el pedido.");
+      clear();
+      router.push(`/gracias?pedido=${data.id}`);
+    } catch (err) {
+      setServerError(err instanceof Error ? err.message : "No pudimos guardar el pedido.");
+      setPaying(false);
+    }
   }
 
   const waExtra = [
@@ -103,8 +125,8 @@ export default function CheckoutPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               {(
                 [
-                  ["envio", "Envío a domicilio", subtotal >= store.freeShippingFrom ? "Gratis" : formatPrice(store.shippingCost)],
-                  ["retiro", "Retiro en el local", `Gratis, en ${store.address}, Viale`],
+                  ["envio", "Envío a domicilio", shippingFor(subtotal, settings) === 0 ? "Gratis" : formatPrice(settings.shippingCost)],
+                  ["retiro", "Retiro en el local", settings.address ? `Gratis, en ${settings.address}` : "Gratis"],
                 ] as const
               ).map(([value, title, sub]) => (
                 <label
@@ -118,7 +140,11 @@ export default function CheckoutPage() {
                     name="delivery"
                     value={value}
                     checked={delivery === value}
-                    onChange={() => setDelivery(value)}
+                    onChange={() => {
+                      setDelivery(value);
+                      // Efectivo solo si retira en el local.
+                      if (value === "envio" && payment === "efectivo") setPayment("mercadopago");
+                    }}
                     className="mt-1 accent-[var(--accent)]"
                   />
                   <span>
@@ -150,7 +176,45 @@ export default function CheckoutPage() {
             )}
           </fieldset>
 
+          <fieldset>
+            <legend className="mb-5 text-xl font-semibold">Pago</legend>
+            <div className="grid gap-3">
+              {(
+                [
+                  ["mercadopago", "Mercado Pago", settings.installments || "Tarjeta, débito o dinero en cuenta"],
+                  ["transferencia", "Transferencia", settings.transferDiscount > 0 ? `${settings.transferDiscount}% de descuento` : "Te pasamos los datos"],
+                  ...(delivery === "retiro" ? [["efectivo", "Efectivo al retirar", "Pagás en el local"]] : []),
+                ] as [Payment, string, string][]
+              ).map(([value, title, sub]) => (
+                <label
+                  key={value}
+                  className={`flex cursor-pointer items-start gap-3 border p-4 transition-colors ${
+                    payment === value ? "border-ink" : "border-line hover:border-muted"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="payment"
+                    value={value}
+                    checked={payment === value}
+                    onChange={() => setPayment(value)}
+                    className="mt-1 accent-[var(--accent)]"
+                  />
+                  <span>
+                    <span className="block font-semibold">{title}</span>
+                    <span className="text-sm text-muted">{sub}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+
           <div className="space-y-3">
+            {serverError && (
+              <p role="alert" className="border border-accent p-3 text-sm font-medium text-accent">
+                {serverError}
+              </p>
+            )}
             <button
               type="submit"
               disabled={paying}
@@ -158,17 +222,17 @@ export default function CheckoutPage() {
             >
               {paying ? (
                 <>
-                  <CircleNotch size={20} className="animate-spin" /> Conectando con Mercado Pago
+                  <CircleNotch size={20} className="animate-spin" /> Guardando tu pedido
                 </>
               ) : (
                 <>
-                  <Lock size={18} weight="bold" /> Pagar {formatPrice(total)}
+                  <Lock size={18} weight="bold" /> Confirmar pedido · {formatPrice(total)}
                 </>
               )}
             </button>
-            <p className="text-center text-sm text-muted">Pago seguro con Mercado Pago. En esta demo el pago es simulado.</p>
+            <p className="text-center text-sm text-muted">Te reservamos las prendas y te escribimos por WhatsApp para coordinar.</p>
             <WaLink
-              message={cartToWhatsApp(lines, waExtra)}
+              message={cartToWhatsApp(lines, products, waExtra)}
               className="flex h-13 w-full items-center justify-center gap-2 border border-ink font-semibold transition-transform active:scale-[0.98]"
             >
               <WhatsappLogo size={20} weight="fill" /> Prefiero pagar por WhatsApp
@@ -206,6 +270,12 @@ export default function CheckoutPage() {
                 <dt className="text-muted">Subtotal</dt>
                 <dd className="tabular-nums">{formatPrice(subtotal)}</dd>
               </div>
+              {discount > 0 && (
+                <div className="flex justify-between">
+                  <dt className="text-muted">Descuento transferencia</dt>
+                  <dd className="tabular-nums">−{formatPrice(discount)}</dd>
+                </div>
+              )}
               <div className="flex justify-between">
                 <dt className="text-muted">Envío</dt>
                 <dd className="tabular-nums">{shipping === 0 ? "Gratis" : formatPrice(shipping)}</dd>

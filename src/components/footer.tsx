@@ -1,17 +1,17 @@
 import Link from "next/link";
 import { Truck, ArrowsClockwise, CreditCard, WhatsappLogo, InstagramLogo } from "@phosphor-icons/react/dist/ssr";
-import { formatPrice, store, waLink } from "@/lib/config";
+import { formatPrice, store, waLink, type Settings } from "@/lib/config";
 import { categories } from "@/lib/products";
 
-export function Footer() {
+export function Footer({ settings }: { settings: Settings }) {
   const info = [
     {
       icon: Truck,
       title: "Envíos",
-      text: `A todo el país. Gratis desde ${formatPrice(store.freeShippingFrom)}.`,
+      text: settings.freeShippingFrom > 0 ? `A todo el país. Gratis desde ${formatPrice(settings.freeShippingFrom)}.` : "A todo el país.",
     },
     { icon: ArrowsClockwise, title: "Cambios", text: "Tenés 30 días para cambiar talle o prenda." },
-    { icon: CreditCard, title: "Pagos", text: `${store.installments} con Mercado Pago. También transferencia o efectivo.` },
+    { icon: CreditCard, title: "Pagos", text: `${settings.installments ? `${settings.installments} con Mercado Pago` : "Mercado Pago"}. También transferencia o efectivo.` },
   ];
 
   return (
@@ -35,7 +35,7 @@ export function Footer() {
             <p className="mt-2 text-muted">
               {store.tagline}.
               <br />
-              {store.address}, {store.city}.
+              {[settings.address, settings.city].filter(Boolean).join(", ")}.
             </p>
           </div>
           <div className="flex flex-col gap-6 sm:flex-row sm:gap-16">
@@ -50,7 +50,7 @@ export function Footer() {
             </ul>
             <ul className="text-sm">
               <li>
-                <a href={waLink(`Hola ${store.name}!`)} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-2 text-muted hover:text-ink">
+                <a href={waLink(settings.whatsapp, `Hola ${store.name}!`)} target="_blank" rel="noopener noreferrer" className="flex min-h-11 items-center gap-2 text-muted hover:text-ink">
                   <WhatsappLogo size={18} /> WhatsApp
                 </a>
               </li>

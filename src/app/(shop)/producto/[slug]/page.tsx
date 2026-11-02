@@ -3,22 +3,21 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
-import { getProduct, products, sizesOf, SIZES } from "@/lib/products";
+import { sizesOf, SIZES } from "@/lib/products";
+import { getProductBySlug, getShop } from "@/lib/shop";
 import { formatPrice, store } from "@/lib/config";
 import { ProductActions } from "@/components/product-actions";
 import { ProductCard } from "@/components/product-card";
 
-export function generateStaticParams() {
-  return products.map((p) => ({ slug: p.slug }));
-}
-
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const p = getProduct((await params).slug);
+  const p = await getProductBySlug((await params).slug);
   return { title: p ? `${p.name} | ${store.name}` : store.name };
 }
 
 export default async function ProductPage({ params }: { params: Promise<{ slug: string }> }) {
-  const product = getProduct((await params).slug);
+  const { products, settings } = await getShop();
+  const slug = (await params).slug;
+  const product = products.find((p) => p.slug === slug);
   if (!product) notFound();
 
   const related = products
@@ -45,8 +44,17 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             className="object-cover"
           />
         </div>
+        {product.images.length > 1 && (
+          <div className="grid grid-cols-3 gap-3 md:col-span-7 md:row-start-2">
+            {product.images.slice(1).map((src, i) => (
+              <div key={src} className="relative aspect-[4/5] overflow-hidden bg-line">
+                <Image src={src} alt={`${product.name}, foto ${i + 2}`} fill sizes="(min-width: 768px) 19vw, 33vw" className="object-cover" />
+              </div>
+            ))}
+          </div>
+        )}
 
-        <div className="md:col-span-5 md:pt-4">
+        <div className="md:col-span-5 md:row-span-2 md:row-start-1 md:col-start-8 md:pt-4">
           <p className="text-sm text-muted">
             {product.id} · {product.color}
           </p>
@@ -89,7 +97,8 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
                 <span className="text-xl transition-transform group-open:rotate-45">+</span>
               </summary>
               <p className="mt-3 text-sm leading-relaxed text-muted">
-                {store.shippingNote} Envío gratis desde {formatPrice(store.freeShippingFrom)}. Tenés 30
+                Envíos a todo el país.{settings.address && ` Retiro gratis en el local, ${settings.address}.`}
+                {settings.freeShippingFrom > 0 && ` Envío gratis desde ${formatPrice(settings.freeShippingFrom)}.`} Tenés 30
                 días para cambiar talle o prenda.
               </p>
             </details>

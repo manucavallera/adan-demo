@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
-import { products, type Size } from "@/lib/products";
-import { store } from "@/lib/config";
+import type { Product, Size } from "@/lib/products";
+import { shippingFor, store } from "@/lib/config";
+import { useShop } from "./shop";
 
 export type CartLine = { id: string; size: Size; qty: number };
 
@@ -25,6 +26,9 @@ const KEY = "adan-cart";
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const [lines, setLines] = useState<CartLine[]>([]);
   const [open, setOpen] = useState(false);
+  const { products, settings } = useShop();
+  const productsRef = useRef(products);
+  productsRef.current = products;
 
   // El carrito se guarda en el navegador para que no se pierda al recargar.
   useEffect(() => {
@@ -41,7 +45,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [lines]);
 
   const maxFor = (id: string, size: Size) =>
-    products.find((p) => p.id === id)?.stock[size] ?? 0;
+    productsRef.current.find((p) => p.id === id)?.stock[size] ?? 0;
 
   const add = useCallback((id: string, size: Size) => {
     setLines((prev) => {
@@ -74,9 +78,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       (s, l) => s + (products.find((p) => p.id === l.id)?.price ?? 0) * l.qty,
       0,
     );
-    const shipping = subtotal === 0 || subtotal >= store.freeShippingFrom ? 0 : store.shippingCost;
+    const shipping = shippingFor(subtotal, settings);
     return { lines, count, subtotal, shipping, open, setOpen, add, setQty, clear };
-  }, [lines, open, add, setQty, clear]);
+  }, [lines, open, add, setQty, clear, products, settings]);
 
   return (
     <MotionConfig reducedMotion="user">
@@ -91,7 +95,7 @@ export function useCart() {
   return ctx;
 }
 
-export function cartToWhatsApp(lines: CartLine[], extra?: string) {
+export function cartToWhatsApp(lines: CartLine[], products: Product[], extra?: string) {
   const items = lines
     .map((l) => {
       const p = products.find((x) => x.id === l.id);

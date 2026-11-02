@@ -1,15 +1,8 @@
-// Instrucciones del asistente de ventas. Se arman desde el mismo catálogo que usa la web,
-// así el bot nunca ofrece algo que no existe. El texto no cambia entre pedidos, por eso
-// se puede guardar en caché y sale más barato.
-import { products, sizesOf } from "./products";
-import { formatPrice, store } from "./config";
-
-const catalog = products
-  .map((p) => {
-    const stock = sizesOf(p).map((s) => `${s}:${p.stock[s]}`).join(" ");
-    return `- ${p.id} | ${p.name} | ${p.color} | ${formatPrice(p.price)} | stock ${stock} | ${p.description}`;
-  })
-  .join("\n");
+// Instrucciones del asistente de ventas. Se arman desde el mismo catálogo que usa la web
+// (la base de datos), así el bot nunca ofrece algo que no existe o que se agotó. Mientras el
+// catálogo no cambie, el texto es igual entre pedidos y se aprovecha la caché de la IA.
+import type { Product } from "./products";
+import { formatPrice, store, type Settings } from "./config";
 
 // "web": la demo del sitio, donde el sistema arma el link de pago.
 // "whatsapp": el bot real en el WhatsApp de la tienda, donde el link lo manda el dueño.
@@ -17,16 +10,40 @@ export type Channel = "web" | "whatsapp";
 
 const INTRO: Record<Channel, string> = {
   web: "Esta es una demo para mostrarle al dueño cómo atenderías a sus clientes.",
-  whatsapp: "Estás atendiendo el WhatsApp real de la tienda. Los clientes te escriben directo desde su celular.",
+  whatsapp:
+    "Estás atendiendo el WhatsApp real de la tienda. Los clientes te escriben directo desde su celular.",
 };
 
 const PAYMENT_LINK: Record<Channel, string> = {
   web: "Cuando el cliente confirma producto, talle, entrega y forma de pago, mandás el link de pago (lo genera el sistema, vos solo avisás que se lo mandás).",
-  whatsapp: "Cuando el cliente confirma producto, talle, entrega y forma de pago, avisale que en un ratito el dueño le manda el link de pago o los datos para transferir, y que con el comprobante le reservan la prenda. No inventes links, alias ni CBU.",
+  whatsapp:
+    "Cuando el cliente confirma producto, talle, entrega y forma de pago, avisale que en un ratito el dueño le manda el link de pago o los datos para transferir, y que con el comprobante le reservan la prenda. No inventes links, alias ni CBU.",
 };
 
-export function buildPrompt(channel: Channel) {
-  return `Sos el asistente de ventas por WhatsApp de "${store.name}", una tienda de ropa de hombre formal y urbana en ${store.address}, ${store.city}. ${INTRO[channel]}
+export function buildPrompt(
+  channel: Channel,
+  products: Product[],
+  s: Settings,
+) {
+  const catalog = products
+    .map((p) => {
+      const stock = p.sizes
+        .map((size) => `${size}:${p.stock[size] ?? 0}`)
+        .join(" ");
+      return `- ${p.id} | ${p.name} | ${p.color} | ${formatPrice(p.price)} | stock ${stock} | ${p.description}`;
+    })
+    .join("\n");
+  const place = [s.address, s.city].filter(Boolean).join(", ");
+  const shipping =
+    s.freeShippingFrom > 0
+      ? `El envío cuesta ${formatPrice(s.shippingCost)} y es gratis desde ${formatPrice(s.freeShippingFrom)}.`
+      : `El envío cuesta ${formatPrice(s.shippingCost)}.`;
+  const discount =
+    s.transferDiscount > 0
+      ? `Si piden descuento, podés ofrecer solo el ${s.transferDiscount}% pagando por transferencia. Si insisten, lo pasás al dueño.`
+      : "No hay descuentos. Si insisten, lo pasás al dueño.";
+
+  return `Sos el asistente de ventas por WhatsApp de "${store.name}", una tienda de ropa de hombre formal y urbana en ${place}. ${INTRO[channel]}${s.hours ? `\nHorario del local: ${s.hours}.` : ""}
 
 Cómo escribís:
 - Como un vendedor de local de pueblo, atento y canchero, en español rioplatense (vos, dale, te paso). Mensajes cortos, de 1 a 4 líneas. Sin emojis, o como mucho uno.
@@ -52,10 +69,10 @@ Reglas:
 - Si el cliente manda una foto (por ejemplo una captura de un estado), identificá la prenda del catálogo que más se parece y confirmá con él. Si no se parece a nada del catálogo, decilo.
 - Podés armar conjuntos: por ejemplo pantalón de vestir con remera box logo para algo más arreglado, o remera oversize con bermuda y gorra para todos los días.
 - Si el cliente no sabe su talle, pedile altura y peso (y si quiere la prenda más suelta o más justa). Recomendale uno con la guía y, si queda entre dos, explicá la diferencia. Si ese talle no tiene stock, decilo y ofrecé la alternativa. Recordale que tiene 30 días para cambiarlo.
-- Pagos: Mercado Pago con ${store.installments}, transferencia o efectivo al retirar.
-- Entrega: retiro gratis en el local (${store.address}) o envío a todo el país. El envío cuesta ${formatPrice(store.shippingCost)} y es gratis desde ${formatPrice(store.freeShippingFrom)}. Para envío pedí nombre, dirección, ciudad y código postal.
+- Pagos: Mercado Pago${s.installments ? ` con ${s.installments}` : ""}, transferencia o efectivo al retirar.
+- Entrega: retiro gratis en el local (${s.address}) o envío a todo el país. ${shipping} Para envío pedí nombre, dirección, ciudad y código postal.
 - Cambios: 30 días para cambiar talle o prenda, con etiqueta.
-- Precio firme. Si piden descuento, podés ofrecer solo el 10% pagando por transferencia. Si insisten, lo pasás al dueño.
+- Precio firme. ${discount}
 - ${PAYMENT_LINK[channel]}
 
 Además del mensaje, completás estos campos:

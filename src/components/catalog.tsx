@@ -3,7 +3,8 @@
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { categories, products, SIZES, type Category, type Size } from "@/lib/products";
+import { categories, SIZES, type Category, type Size } from "@/lib/products";
+import { useShop } from "./shop";
 import { ProductCard } from "./product-card";
 
 const chip =
@@ -15,6 +16,7 @@ export function Catalog() {
   const params = useSearchParams();
   const [cat, setCat] = useState<Category | "todo">("todo");
   const [size, setSize] = useState<Size | null>(null);
+  const { products } = useShop();
 
   // Los links del menú (/?cat=buzos) filtran directo.
   useEffect(() => {
@@ -27,7 +29,7 @@ export function Catalog() {
       products.filter(
         (p) => (cat === "todo" || p.category === cat) && (!size || p.stock[size] > 0),
       ),
-    [cat, size],
+    [cat, size, products],
   );
 
   return (
