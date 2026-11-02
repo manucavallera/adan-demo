@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // "standalone" arma un servidor chico para el Dockerfile (deploy en Easypanel).
+  output: "standalone",
 };
 
 export default nextConfig;
