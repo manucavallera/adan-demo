@@ -3,11 +3,12 @@ import { CheckCircle, WhatsappLogo } from "@phosphor-icons/react/dist/ssr";
 import { formatPrice, store, waLink } from "@/lib/config";
 import { getShop } from "@/lib/shop";
 import { getOrder, orderCode } from "@/lib/orders";
+import { mpEnabled } from "@/lib/mercadopago";
 
 export const dynamic = "force-dynamic";
 
-export default async function ThanksPage({ searchParams }: { searchParams: Promise<{ pedido?: string }> }) {
-  const { pedido } = await searchParams;
+export default async function ThanksPage({ searchParams }: { searchParams: Promise<{ pedido?: string; status?: string; error?: string }> }) {
+  const { pedido, status, error } = await searchParams;
   const id = Number(pedido);
   const order = Number.isInteger(id) && id > 0 ? await getOrder(id) : null;
   const { settings } = await getShop();
@@ -48,7 +49,27 @@ export default async function ThanksPage({ searchParams }: { searchParams: Promi
               <p className="mt-3 text-sm text-muted">Mandanos el comprobante por WhatsApp con el número de pedido.</p>
             </div>
           )}
-          {order.payment === "mercadopago" && <p>En un ratito te mandamos por WhatsApp el link de pago de Mercado Pago.</p>}
+          {order.payment === "mercadopago" &&
+            (!mpEnabled() ? (
+              <p>En un ratito te mandamos por WhatsApp el link de pago de Mercado Pago.</p>
+            ) : order.status !== "PENDIENTE" || order.mpPaymentId || status === "approved" ? (
+              <p>Tu pago con Mercado Pago está aprobado. Te escribimos por WhatsApp para coordinar la entrega.</p>
+            ) : status === "pending" || status === "in_process" ? (
+              <p>Mercado Pago está procesando tu pago. Cuando se acredite te avisamos por WhatsApp.</p>
+            ) : (
+              <div className="border border-line bg-surface p-5 text-base text-ink">
+                <p className="font-semibold">
+                  {status === "rejected" || error === "mp" ? "El pago no se pudo completar." : "Falta pagar tu pedido."}
+                </p>
+                <p className="mt-1 text-muted">Podés intentarlo de nuevo con tarjeta, débito o dinero en cuenta.</p>
+                <a
+                  href={`/api/orders/${order.id}/pagar`}
+                  className="mt-4 inline-flex h-12 items-center bg-[#009ee3] px-6 font-semibold text-white"
+                >
+                  Pagar con Mercado Pago
+                </a>
+              </div>
+            ))}
           {order.payment === "efectivo" && <p>Pagás en efectivo cuando retirás en el local. Te avisamos por WhatsApp cuando esté listo.</p>}
         </div>
       ) : (

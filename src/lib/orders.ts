@@ -134,3 +134,36 @@ async function notifyNewOrder(order: NonNullable<FullOrder>) {
     console.error("[pedidos] no se pudo avisar al dueño", error);
   }
 }
+
+// Mercado Pago avisó un pago aprobado. Marca el pedido como pagado y avisa al dueño.
+// Si el pedido estaba cancelado, no lo toca: deja una nota y avisa, porque el stock ya se liberó.
+export async function confirmMpPayment(orderId: number, paymentId: string, amount: number) {
+  const order = await getOrder(orderId);
+  if (!order || order.mpPaymentId === paymentId) return;
+
+  const short = amount + 1 < order.total;
+  const problem =
+    order.status === "CANCELADO"
+      ? "llegó un pago de un pedido CANCELADO: revisá si hay stock o devolvé el dinero desde Mercado Pago"
+      : short
+        ? `el pago (${formatPrice(amount)}) es menor al total`
+        : "";
+  const note = `MP pago ${paymentId}${problem ? `: ${problem}` : ""}`;
+
+  await prisma.order.update({
+    where: { id: orderId },
+    data: { mpPaymentId: paymentId, notes: [order.notes, note].filter(Boolean).join("\n") },
+  });
+  if (!problem && order.status === "PENDIENTE") await setOrderStatus(orderId, "PAGADO");
+
+  const owner = process.env.OWNER_WHATSAPP?.replace(/\D/g, "");
+  if (!owner || !process.env.EVOLUTION_URL) return;
+  const text = problem
+    ? `Ojo con el pedido ${orderCode(orderId)}: ${problem}.`
+    : `Pago aprobado en Mercado Pago: pedido ${orderCode(orderId)} de ${order.name} por ${formatPrice(amount)}. Ya está marcado como pagado.`;
+  try {
+    await sendText(owner, text, 0);
+  } catch (error) {
+    console.error("[pedidos] no se pudo avisar el pago", error);
+  }
+}

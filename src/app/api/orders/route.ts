@@ -1,4 +1,5 @@
 // Crea un pedido desde el checkout de la web.
+import { createPaymentLink, mpEnabled } from "@/lib/mercadopago";
 import { createOrder, OrderError, orderCode, type NewOrder } from "@/lib/orders";
 
 export const runtime = "nodejs";
@@ -54,7 +55,16 @@ export async function POST(req: Request) {
 
   try {
     const order = await createOrder(input);
-    return json({ id: order.id, code: orderCode(order.id), total: order.total });
+    // Con Mercado Pago activo, el cliente va directo a pagar. Si MP falla, el pedido queda
+    // guardado y la página de gracias muestra el botón para reintentar.
+    let payUrl: string | undefined;
+    if (order.payment === "mercadopago" && mpEnabled()) {
+      payUrl = await createPaymentLink(order).catch((error) => {
+        console.error("[mercadopago] no se pudo crear el link", error);
+        return undefined;
+      });
+    }
+    return json({ id: order.id, code: orderCode(order.id), total: order.total, payUrl });
   } catch (error) {
     if (error instanceof OrderError) return json({ error: error.message }, 409);
     console.error("[pedidos] error al crear", error);

@@ -76,7 +76,8 @@ export default function CheckoutPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "No pudimos guardar el pedido.");
       clear();
-      router.push(`/gracias?pedido=${data.id}`);
+      if (data.payUrl) window.location.href = data.payUrl;
+      else router.push(`/gracias?pedido=${data.id}`);
     } catch (err) {
       setServerError(err instanceof Error ? err.message : "No pudimos guardar el pedido.");
       setPaying(false);

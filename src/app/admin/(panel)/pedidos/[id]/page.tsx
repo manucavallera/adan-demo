@@ -40,6 +40,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
             <h2 className="mb-3 font-semibold">Entrega y pago</h2>
             <p>{order.delivery === "envio" ? `Envío a ${order.address}, ${order.city} (CP ${order.zip})` : "Retira en el local"}</p>
             <p className="text-muted">Pago: {PAYMENT_LABEL[order.payment] ?? order.payment}</p>
+            {order.mpPaymentId && <p className="text-muted">Pago de Mercado Pago n.º {order.mpPaymentId}</p>}
             <p className="text-muted">Hecho el {dateAR(order.createdAt)}</p>
           </div>
         </section>
