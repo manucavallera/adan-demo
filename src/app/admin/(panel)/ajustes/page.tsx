@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 import { revalidateShop } from "@/lib/shop";
 import { Field, PageTitle, btnPrimary, input } from "@/components/admin/ui";
 
-const TEXT = ["whatsapp", "address", "city", "hours", "installments", "transferAlias", "transferCbu", "transferHolder"] as const;
+const TEXT = ["whatsapp", "address", "city", "hours", "installments", "transferAlias", "transferCbu", "transferHolder", "legalName", "cuit", "email"] as const;
 const NUM = ["shippingCost", "freeShippingFrom", "transferDiscount"] as const;
 
 async function save(formData: FormData) {
@@ -26,7 +26,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const { ok } = await searchParams;
   const s = (await prisma.settings.findUnique({ where: { id: 1 } })) ?? {
     whatsapp: "", address: "", city: "", hours: "", installments: "", shippingCost: 0, freeShippingFrom: 0,
-    transferDiscount: 0, transferAlias: "", transferCbu: "", transferHolder: "",
+    transferDiscount: 0, transferAlias: "", transferCbu: "", transferHolder: "", legalName: "", cuit: "", email: "",
   };
 
   return (
@@ -76,6 +76,22 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           </Field>
           <Field label="Titular de la cuenta" htmlFor="transferHolder">
             <input id="transferHolder" name="transferHolder" defaultValue={s.transferHolder} className={input} />
+          </Field>
+        </fieldset>
+
+        <fieldset className="grid gap-5 sm:grid-cols-2">
+          <legend className="mb-4 text-lg font-semibold">Datos legales</legend>
+          <p className="-mt-2 text-sm text-muted sm:col-span-2">
+            La ley pide mostrarlos en la web. Salen al pie de página y en los términos y condiciones.
+          </p>
+          <Field label="Nombre o razón social" htmlFor="legalName" hint="Como figura en ARCA (AFIP).">
+            <input id="legalName" name="legalName" defaultValue={s.legalName} className={input} />
+          </Field>
+          <Field label="CUIT" htmlFor="cuit" hint="Ej: 20-12345678-9">
+            <input id="cuit" name="cuit" defaultValue={s.cuit} className={input} />
+          </Field>
+          <Field label="Email de contacto" htmlFor="email" hint="Para reclamos y arrepentimientos.">
+            <input id="email" name="email" type="email" defaultValue={s.email} className={input} />
           </Field>
         </fieldset>
 

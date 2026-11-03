@@ -26,3 +26,9 @@ export async function saveNotes(id: number, notes: string) {
   await prisma.order.update({ where: { id }, data: { notes: notes.slice(0, 1000) } });
   revalidatePath(`/admin/pedidos/${id}`);
 }
+
+export async function markWithdrawalHandled(id: number) {
+  await requireAdmin();
+  await prisma.withdrawal.update({ where: { id }, data: { handled: true } });
+  revalidatePath("/admin/pedidos");
+}

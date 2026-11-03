@@ -47,6 +47,9 @@ const DEFAULT_SETTINGS: Settings = {
   transferAlias: "",
   transferCbu: "",
   transferHolder: "",
+  legalName: "",
+  cuit: "",
+  email: "",
 };
 
 export const getShop = unstable_cache(

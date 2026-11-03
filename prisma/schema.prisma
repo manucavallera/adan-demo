@@ -98,6 +98,22 @@ model Settings {
   transferAlias    String @default("")
   transferCbu      String @default("")
   transferHolder   String @default("")
+  // Datos legales que se muestran al pie de la web (Ley 24.240 y Resolución 424/2020).
+  legalName        String @default("") // nombre y apellido o razón social
+  cuit             String @default("")
+  email            String @default("")
+}
+
+// Pedido de "botón de arrepentimiento": el cliente se arrepiente de una compra online (10 días corridos).
+model Withdrawal {
+  id        Int      @id @default(autoincrement())
+  orderCode String   @default("")
+  name      String
+  phone     String
+  email     String   @default("")
+  reason    String   @default("")
+  handled   Boolean  @default(false)
+  createdAt DateTime @default(now())
 }
 
 // Charla del bot de WhatsApp con un cliente.

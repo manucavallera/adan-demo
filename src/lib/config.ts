@@ -20,6 +20,9 @@ export type Settings = {
   transferAlias: string;
   transferCbu: string;
   transferHolder: string;
+  legalName: string;
+  cuit: string;
+  email: string;
 };
 
 export function waLink(phone: string, message: string) {

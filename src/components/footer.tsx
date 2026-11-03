@@ -62,6 +62,34 @@ export function Footer({ settings }: { settings: Settings }) {
             </ul>
           </div>
         </div>
+
+        <div className="flex flex-col gap-4 border-t border-line py-6 text-sm md:flex-row md:items-center md:justify-between">
+          <Link
+            href="/arrepentimiento"
+            className="inline-flex h-11 w-fit items-center border border-ink px-4 font-semibold"
+          >
+            Botón de arrepentimiento
+          </Link>
+          <ul className="flex flex-wrap gap-x-6 text-muted">
+            <li><Link href="/terminos" className="inline-flex min-h-11 items-center hover:text-ink">Términos y condiciones</Link></li>
+            <li><Link href="/privacidad" className="inline-flex min-h-11 items-center hover:text-ink">Privacidad</Link></li>
+            <li>
+              <a
+                href="https://www.argentina.gob.ar/servicio/iniciar-un-reclamo-ante-defensa-del-consumidor"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex min-h-11 items-center hover:text-ink"
+              >
+                Defensa del consumidor
+              </a>
+            </li>
+          </ul>
+        </div>
+        {(settings.legalName || settings.cuit) && (
+          <p className="pb-6 text-xs text-muted">
+            {[settings.legalName, settings.cuit && `CUIT ${settings.cuit}`].filter(Boolean).join(" · ")}
+          </p>
+        )}
       </div>
     </footer>
   );

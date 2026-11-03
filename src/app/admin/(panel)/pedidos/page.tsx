@@ -1,8 +1,9 @@
 import Link from "next/link";
 import type { OrderStatus } from "@prisma/client";
 import { prisma } from "@/lib/db";
-import { formatPrice } from "@/lib/config";
-import { orderCode, PAYMENT_LABEL } from "@/lib/orders";
+import { formatPrice, waLink } from "@/lib/config";
+import { orderCode, PAYMENT_LABEL, withdrawalCode } from "@/lib/orders";
+import { markWithdrawalHandled } from "./actions";
 import { PageTitle, STATUS_LABEL, StatusBadge, dateAR } from "@/components/admin/ui";
 
 const FILTERS: { id: string; label: string; where: OrderStatus[] | null }[] = [
@@ -22,10 +23,48 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     orderBy: { createdAt: "desc" },
     take: 100,
   });
+  const withdrawals = await prisma.withdrawal.findMany({ where: { handled: false }, orderBy: { createdAt: "asc" } });
 
   return (
     <>
       <PageTitle title="Pedidos" />
+      {withdrawals.length > 0 && (
+        <section className="mb-8 border border-accent p-5">
+          <h2 className="font-semibold">Arrepentimientos para atender ({withdrawals.length})</h2>
+          <p className="mt-1 text-sm text-muted">
+            El cliente tiene derecho a devolver la compra sin costo. Escribile, coordiná la devolución y reintegrale el total.
+          </p>
+          <ul className="mt-4 divide-y divide-line">
+            {withdrawals.map((w) => (
+              <li key={w.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="font-medium">
+                    {withdrawalCode(w.id)} · {w.name} <span className="text-muted">+{w.phone}</span>
+                  </p>
+                  <p className="text-sm text-muted">
+                    {[w.orderCode && `Pedido ${w.orderCode}`, w.reason, w.email, dateAR(w.createdAt)].filter(Boolean).join(" · ")}
+                  </p>
+                </div>
+                <div className="flex shrink-0 gap-2">
+                  <a
+                    href={waLink(w.phone, `Hola ${w.name.split(" ")[0]}! Recibimos tu pedido de arrepentimiento ${withdrawalCode(w.id)}. Te escribo para coordinar la devolución.`)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex h-10 items-center bg-[#25d366] px-3 text-sm font-semibold text-[#0b1f12]"
+                  >
+                    WhatsApp
+                  </a>
+                  <form action={markWithdrawalHandled.bind(null, w.id)}>
+                    <button type="submit" className="h-10 cursor-pointer border border-line px-3 text-sm hover:border-ink">
+                      Ya lo atendí
+                    </button>
+                  </form>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       <div className="no-scrollbar mb-5 flex gap-2 overflow-x-auto">
         {FILTERS.map((f) => (
           <Link

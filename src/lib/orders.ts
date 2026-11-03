@@ -30,6 +30,11 @@ export function orderCode(id: number) {
   return `AD-${String(id).padStart(4, "0")}`;
 }
 
+// Código de trámite del botón de arrepentimiento.
+export function withdrawalCode(id: number) {
+  return `ARR-${String(id).padStart(4, "0")}`;
+}
+
 export async function createOrder(input: NewOrder) {
   const { products, settings } = await getShop();
 
