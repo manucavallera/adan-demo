@@ -21,9 +21,13 @@ function config() {
   const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
   const version = process.env.WHATSAPP_GRAPH_VERSION || "v26.0";
   if (!token || !phoneId) throw new Error("Faltan WHATSAPP_TOKEN o WHATSAPP_PHONE_NUMBER_ID");
-  // WHATSAPP_GRAPH_URL solo se cambia para pruebas locales.
+  // WHATSAPP_GRAPH_URL cambia para usar un proveedor (Kapso) o en pruebas locales.
   const host = (process.env.WHATSAPP_GRAPH_URL || "https://graph.facebook.com").replace(/\/+$/, "");
-  return { token, phoneId, base: `${host}/${version}` };
+  // Meta pide "Authorization: Bearer"; el proxy de Kapso rechaza ese encabezado y pide X-API-Key.
+  const auth: Record<string, string> = /(^|\.)kapso\.ai$/.test(new URL(host).hostname)
+    ? { "X-API-Key": token }
+    : { Authorization: `Bearer ${token}` };
+  return { phoneId, auth, base: `${host}/${version}` };
 }
 
 export function cloudConfigured() {
@@ -31,10 +35,10 @@ export function cloudConfigured() {
 }
 
 async function post<T>(body: Record<string, unknown>): Promise<T> {
-  const { token, phoneId, base } = config();
+  const { phoneId, auth, base } = config();
   const res = await fetch(`${base}/${phoneId}/messages`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+    headers: { "Content-Type": "application/json", ...auth },
     body: JSON.stringify({ messaging_product: "whatsapp", ...body }),
     signal: AbortSignal.timeout(30_000),
   });
@@ -80,8 +84,7 @@ export async function markReadTyping(messageId: string) {
 
 // Baja una foto que mandó el cliente: primero se pide la URL temporal y después el archivo.
 export async function downloadMedia(mediaId: string) {
-  const { token, base } = config();
-  const auth = { Authorization: `Bearer ${token}` };
+  const { auth, base } = config();
   const meta = await fetch(`${base}/${mediaId}`, { headers: auth, signal: AbortSignal.timeout(15_000) });
   if (!meta.ok) throw new CloudApiError(`No se pudo pedir la foto (${meta.status})`, meta.status);
   const { url, mime_type } = (await meta.json()) as { url?: string; mime_type?: string };
