@@ -6,6 +6,9 @@
 //   WHATSAPP_APP_SECRET     "clave secreta de la app" en Meta, para validar la firma de cada aviso
 //   WHATSAPP_VERIFY_TOKEN   texto al azar que se pega en Meta al configurar el webhook
 //   URL del webhook en Meta: <PUBLIC_SITE_URL>/api/whatsapp
+//   Con Kapso (proveedor con coexistencia): WHATSAPP_GRAPH_URL=https://api.kapso.ai/meta/whatsapp,
+//   WHATSAPP_GRAPH_VERSION=v24.0, WHATSAPP_TOKEN=<API key de Kapso>, WHATSAPP_APP_SECRET=<secret_key
+//   del webhook "meta" en Kapso>. Kapso no usa WHATSAPP_VERIFY_TOKEN.
 //
 // Evolution API:
 //   WHATSAPP_WEBHOOK_TOKEN  Evolution llama a /api/whatsapp?token=<clave>
@@ -44,7 +47,8 @@ export async function POST(req: Request) {
   if (body.object === "whatsapp_business_account") {
     const secret = process.env.WHATSAPP_APP_SECRET;
     if (!secret) return json({ error: "Webhook sin configurar" }, 503);
-    if (!validSignature(raw, req.headers.get("x-hub-signature-256"), secret)) return json({ error: "Firma inválida" }, 401);
+    const signature = req.headers.get("x-hub-signature-256") ?? req.headers.get("x-webhook-signature");
+    if (!validSignature(raw, signature, secret)) return json({ error: "Firma inválida" }, 401);
     // Meta espera la respuesta enseguida: los mensajes se procesan después (el bot evita duplicados).
     for (const m of parseCloudWebhook(body)) {
       handleIncoming(m).catch((error) => console.error("[whatsapp] error procesando mensaje", error));

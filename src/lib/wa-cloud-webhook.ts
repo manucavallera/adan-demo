@@ -28,10 +28,13 @@ export type CloudWebhook = {
 };
 
 // Meta firma cada aviso con la "clave secreta de la app" (X-Hub-Signature-256: sha256=<hex>).
+// Kapso reenvía el mismo aviso firmado con su propia clave (X-Webhook-Signature: <hex>, sin prefijo).
 export function validSignature(raw: string, header: string | null, secret: string) {
-  if (!header?.startsWith("sha256=")) return false;
+  if (!header) return false;
+  const hex = header.startsWith("sha256=") ? header.slice(7) : header;
+  if (!/^[0-9a-f]{64}$/i.test(hex)) return false;
   const expected = createHmac("sha256", secret).update(raw).digest();
-  const got = Buffer.from(header.slice(7), "hex");
+  const got = Buffer.from(hex, "hex");
   return got.length === expected.length && timingSafeEqual(got, expected);
 }
 
