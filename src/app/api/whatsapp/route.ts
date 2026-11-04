@@ -8,7 +8,8 @@
 //   URL del webhook en Meta: <PUBLIC_SITE_URL>/api/whatsapp
 //   Con Kapso (proveedor con coexistencia): WHATSAPP_GRAPH_URL=https://api.kapso.ai/meta/whatsapp,
 //   WHATSAPP_GRAPH_VERSION=v24.0, WHATSAPP_TOKEN=<API key de Kapso>, WHATSAPP_APP_SECRET=<secret_key
-//   del webhook "meta" en Kapso>. Kapso no usa WHATSAPP_VERIFY_TOKEN.
+//   del webhook en Kapso>. Kapso no usa WHATSAPP_VERIFY_TOKEN. Acepta el webhook "meta" y también
+//   el formato propio de Kapso (eventos whatsapp.message.received / .sent), que es el único del Sandbox.
 //
 // Evolution API:
 //   WHATSAPP_WEBHOOK_TOKEN  Evolution llama a /api/whatsapp?token=<clave>
@@ -17,7 +18,13 @@
 // Para los dos:
 //   OWNER_WHATSAPP          número para los avisos (ej: 5493431234567). Opcional.
 //   PUBLIC_SITE_URL         URL pública de la web, para mandar las fotos (ej: https://adan.com.ar)
-import { parseCloudWebhook, validSignature, type CloudWebhook } from "@/lib/wa-cloud-webhook";
+import {
+  parseCloudWebhook,
+  parseKapsoWebhook,
+  validSignature,
+  type CloudWebhook,
+  type KapsoWebhook,
+} from "@/lib/wa-cloud-webhook";
 import { handleIncoming, handleMessage, type WaData } from "@/lib/whatsapp-bot";
 
 export const runtime = "nodejs";
@@ -44,13 +51,20 @@ export async function POST(req: Request) {
     return json({ error: "JSON inválido" }, 400);
   }
 
-  if (body.object === "whatsapp_business_account") {
+  const kapsoEvent = req.headers.get("x-webhook-event");
+  if (body.object === "whatsapp_business_account" || kapsoEvent) {
     const secret = process.env.WHATSAPP_APP_SECRET;
     if (!secret) return json({ error: "Webhook sin configurar" }, 503);
     const signature = req.headers.get("x-hub-signature-256") ?? req.headers.get("x-webhook-signature");
     if (!validSignature(raw, signature, secret)) return json({ error: "Firma inválida" }, 401);
+    const incoming =
+      body.object === "whatsapp_business_account"
+        ? parseCloudWebhook(body)
+        : /^whatsapp\.message\.(received|sent)$/.test(kapsoEvent ?? "")
+          ? parseKapsoWebhook(body as unknown as KapsoWebhook)
+          : [];
     // Meta espera la respuesta enseguida: los mensajes se procesan después (el bot evita duplicados).
-    for (const m of parseCloudWebhook(body)) {
+    for (const m of incoming) {
       handleIncoming(m).catch((error) => console.error("[whatsapp] error procesando mensaje", error));
     }
     return json({ ok: true });

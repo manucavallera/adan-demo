@@ -92,3 +92,37 @@ export function parseCloudWebhook(body: CloudWebhook): Incoming[] {
   }
   return out;
 }
+
+// Formato propio de Kapso ("kind": "kapso", payload v2). Lo usa el Sandbox de Kapso, que no
+// acepta reenvío en formato Meta. Eventos: whatsapp.message.received y whatsapp.message.sent.
+// Con buffer activado llega { batch: true, data: [...] } con el mismo formato en cada item.
+type KapsoMessage = CloudMessage & { kapso?: { direction?: string; origin?: string } };
+type KapsoEvent = {
+  message?: KapsoMessage;
+  conversation?: { contact_name?: string; phone_number?: string; phone_number_id?: string };
+  phone_number_id?: string;
+};
+export type KapsoWebhook = KapsoEvent & { batch?: boolean; data?: KapsoEvent[] };
+
+export function parseKapsoWebhook(body: KapsoWebhook): Incoming[] {
+  const phoneId = process.env.WHATSAPP_PHONE_NUMBER_ID;
+  const events = body.batch && Array.isArray(body.data) ? body.data : [body];
+  const out: Incoming[] = [];
+  for (const e of events) {
+    const m = e.message;
+    const eventPhoneId = e.phone_number_id || e.conversation?.phone_number_id;
+    if (!m || (phoneId && eventPhoneId && eventPhoneId !== phoneId)) continue;
+    const customer = e.conversation?.phone_number;
+    if (m.kapso?.direction === "outbound") {
+      // Lo que manda el bot vuelve como "cloud_api": se ignora. Lo demás (app de WhatsApp
+      // Business, bandeja de Kapso) es el dueño contestando a mano.
+      if (m.kapso.origin === "cloud_api") continue;
+      const inc = toIncoming({ ...m, to: m.to || customer }, true);
+      if (inc) out.push(inc);
+    } else {
+      const inc = toIncoming({ ...m, from: m.from || customer }, false, e.conversation?.contact_name);
+      if (inc) out.push(inc);
+    }
+  }
+  return out;
+}
