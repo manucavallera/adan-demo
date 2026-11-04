@@ -102,6 +102,8 @@ model Settings {
   legalName        String @default("") // nombre y apellido o razón social
   cuit             String @default("")
   email            String @default("")
+  // Números a los que el bot no contesta (familia, amigos). Uno por renglón; puede llevar un nombre.
+  ignoredNumbers   String @default("")
 }
 
 // Pedido de "botón de arrepentimiento": el cliente se arrepiente de una compra online (10 días corridos).

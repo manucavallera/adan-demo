@@ -61,12 +61,39 @@ export const getShop = unstable_cache(
     let settings = DEFAULT_SETTINGS;
     if (s) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { id, ...rest } = s;
+      const { id, ignoredNumbers, ...rest } = s; // la lista de ignorados no va a la web
       settings = rest;
     }
     return { products: rows.map(toProduct), settings };
   },
   ["shop"],
+  { tags: [TAG] },
+);
+
+// Últimos 10 dígitos (característica + número). Así "343 15 412-3456", "+54 9 343 4123456"
+// y el formato de WhatsApp (5493434123456) dan lo mismo.
+export function phoneKey(raw: string) {
+  const d = raw.replace(/\D/g, "");
+  // Formato local con 15: característica (2-4 dígitos) + 15 + número = 12 dígitos en total.
+  const local = d.replace(/^0/, "");
+  if (local.length === 12 && !local.startsWith("54")) {
+    for (const area of [2, 3, 4]) {
+      if (local.slice(area, area + 2) === "15") return (local.slice(0, area) + local.slice(area + 2)).slice(-10);
+    }
+  }
+  return d.slice(-10);
+}
+
+// Números que el bot ignora (se cargan en Ajustes). Comparten caché con el resto de la tienda.
+export const getIgnoredNumbers = unstable_cache(
+  async () => {
+    const s = await prisma.settings.findUnique({ where: { id: 1 }, select: { ignoredNumbers: true } });
+    return (s?.ignoredNumbers ?? "")
+      .split("\n")
+      .map(phoneKey)
+      .filter((k) => k.length >= 8);
+  },
+  ["ignored-numbers"],
   { tags: [TAG] },
 );
 

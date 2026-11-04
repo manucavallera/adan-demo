@@ -5,7 +5,7 @@
 // - Si el dueño escribe a mano en un chat, el bot se calla en ese chat por 12 horas.
 //   El dueño lo reactiva escribiendo #bot en ese chat o desde el panel (/admin/chats).
 // - Si el bot pasa la charla al dueño o falla, también se calla en ese chat y le avisa al dueño.
-// - Ignora grupos, estados y canales.
+// - Ignora grupos, estados, canales y los números cargados en Ajustes (familia, amigos).
 //
 // Las charlas se guardan en la base (BotChat) para que el panel las muestre y no se pierdan
 // al reiniciar. Lo que es solo de la sesión (mensajes por juntar, timers) vive en memoria.
@@ -16,7 +16,7 @@ import { askBot, RefusalError, type BotReply, type InMsg } from "./bot";
 import { formatPrice, store } from "./config";
 import { prisma } from "./db";
 import { getMediaBase64, sendImage, sendText } from "./evolution";
-import { getShop } from "./shop";
+import { getIgnoredNumbers, getShop, phoneKey } from "./shop";
 
 const WAIT = 4_000; // espera para juntar mensajes seguidos
 const HISTORY = 20; // mensajes que recuerda por charla
@@ -342,6 +342,7 @@ export async function handleMessage(d: WaData) {
   const owner = process.env.OWNER_WHATSAPP?.replace(/\D/g, "");
   const phone = digits(jid) || digits(key.remoteJidAlt);
   if (owner && phone === owner) return; // charla con el dueño: el bot no se mete
+  if (phone && (await getIgnoredNumbers()).includes(phoneKey(phone))) return; // contacto personal
 
   const text = textOf(d.message);
   const chat = await getChat(jid);

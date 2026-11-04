@@ -15,6 +15,12 @@ async function save(formData: FormData) {
   for (const k of TEXT) data[k] = String(formData.get(k) ?? "").trim().slice(0, 200);
   for (const k of NUM) data[k] = Math.max(0, Math.round(Number(formData.get(k)) || 0));
   data.whatsapp = String(data.whatsapp).replace(/\D/g, "");
+  data.ignoredNumbers = String(formData.get("ignoredNumbers") ?? "")
+    .split("\n")
+    .map((l) => l.trim().slice(0, 80))
+    .filter(Boolean)
+    .slice(0, 300)
+    .join("\n");
   data.transferDiscount = Math.min(50, Number(data.transferDiscount));
   await prisma.settings.upsert({ where: { id: 1 }, update: data, create: { id: 1, ...data } });
   revalidateShop();
@@ -26,7 +32,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const { ok } = await searchParams;
   const s = (await prisma.settings.findUnique({ where: { id: 1 } })) ?? {
     whatsapp: "", address: "", city: "", hours: "", installments: "", shippingCost: 0, freeShippingFrom: 0,
-    transferDiscount: 0, transferAlias: "", transferCbu: "", transferHolder: "", legalName: "", cuit: "", email: "",
+    transferDiscount: 0, transferAlias: "", transferCbu: "", transferHolder: "", legalName: "", cuit: "", email: "", ignoredNumbers: "",
   };
 
   return (
@@ -76,6 +82,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           </Field>
           <Field label="Titular de la cuenta" htmlFor="transferHolder">
             <input id="transferHolder" name="transferHolder" defaultValue={s.transferHolder} className={input} />
+          </Field>
+        </fieldset>
+
+        <fieldset className="grid gap-5">
+          <legend className="mb-4 text-lg font-semibold">Bot de WhatsApp</legend>
+          <Field
+            label="Números que el bot no contesta"
+            htmlFor="ignoredNumbers"
+            hint="Familia, amigos, proveedores. Uno por renglón, con característica. Podés poner el nombre al lado. Ej: Mamá 343 412-3456"
+          >
+            <textarea id="ignoredNumbers" name="ignoredNumbers" rows={6} defaultValue={s.ignoredNumbers} className={input} />
           </Field>
         </fieldset>
 
