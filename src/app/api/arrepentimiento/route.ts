@@ -1,7 +1,7 @@
 // Botón de arrepentimiento: guarda el pedido, da un código de trámite y avisa al dueño.
 import { store } from "@/lib/config";
 import { prisma } from "@/lib/db";
-import { sendText } from "@/lib/evolution";
+import { notifyOwner } from "@/lib/wa";
 import { withdrawalCode } from "@/lib/orders";
 
 export const runtime = "nodejs";
@@ -26,19 +26,16 @@ export async function POST(req: Request) {
   });
   const code = withdrawalCode(w.id);
 
-  const owner = process.env.OWNER_WHATSAPP?.replace(/\D/g, "");
-  if (owner && process.env.EVOLUTION_URL) {
-    const text = [
-      `Arrepentimiento de compra en la web de ${store.name}: ${code}`,
-      `${name} · wa.me/${phone}`,
-      w.orderCode && `Pedido: ${w.orderCode}`,
-      w.reason && `Devuelve: ${w.reason}`,
-      "Hay que contestarle y coordinar la devolución. Está en el panel, en Pedidos.",
-    ]
-      .filter(Boolean)
-      .join("\n");
-    sendText(owner, text, 0).catch((error) => console.error("[arrepentimiento] no se pudo avisar", error));
-  }
+  const text = [
+    `Arrepentimiento de compra en la web de ${store.name}: ${code}`,
+    `${name} · wa.me/${phone}`,
+    w.orderCode && `Pedido: ${w.orderCode}`,
+    w.reason && `Devuelve: ${w.reason}`,
+    "Hay que contestarle y coordinar la devolución. Está en el panel, en Pedidos.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  void notifyOwner(text);
 
   return Response.json({ code });
 }

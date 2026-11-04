@@ -4,7 +4,7 @@ import "server-only";
 import type { OrderStatus } from "@prisma/client";
 import { formatPrice, shippingFor, store } from "./config";
 import { prisma } from "./db";
-import { sendText } from "./evolution";
+import { notifyOwner } from "./wa";
 import { getShop, revalidateShop } from "./shop";
 
 export type NewOrder = {
@@ -123,8 +123,6 @@ export async function setOrderStatus(id: number, status: OrderStatus) {
 }
 
 async function notifyNewOrder(order: NonNullable<FullOrder>) {
-  const owner = process.env.OWNER_WHATSAPP?.replace(/\D/g, "");
-  if (!owner || !process.env.EVOLUTION_URL) return;
   const lines = [
     `Pedido nuevo en la web de ${store.name}: ${orderCode(order.id)}`,
     `${order.name} · wa.me/${order.phone}`,
@@ -133,11 +131,7 @@ async function notifyNewOrder(order: NonNullable<FullOrder>) {
     `Pago: ${PAYMENT_LABEL[order.payment] ?? order.payment}`,
     `Total: ${formatPrice(order.total)}`,
   ];
-  try {
-    await sendText(owner, lines.join("\n"), 0);
-  } catch (error) {
-    console.error("[pedidos] no se pudo avisar al dueño", error);
-  }
+  await notifyOwner(lines.join("\n"));
 }
 
 // Mercado Pago avisó un pago aprobado. Marca el pedido como pagado y avisa al dueño.
@@ -161,14 +155,8 @@ export async function confirmMpPayment(orderId: number, paymentId: string, amoun
   });
   if (!problem && order.status === "PENDIENTE") await setOrderStatus(orderId, "PAGADO");
 
-  const owner = process.env.OWNER_WHATSAPP?.replace(/\D/g, "");
-  if (!owner || !process.env.EVOLUTION_URL) return;
   const text = problem
     ? `Ojo con el pedido ${orderCode(orderId)}: ${problem}.`
     : `Pago aprobado en Mercado Pago: pedido ${orderCode(orderId)} de ${order.name} por ${formatPrice(amount)}. Ya está marcado como pagado.`;
-  try {
-    await sendText(owner, text, 0);
-  } catch (error) {
-    console.error("[pedidos] no se pudo avisar el pago", error);
-  }
+  await notifyOwner(text);
 }

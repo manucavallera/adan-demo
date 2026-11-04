@@ -1,32 +1,65 @@
-// Webhook de Evolution API para el WhatsApp de la tienda. La lógica del bot está en
+// Webhook del WhatsApp de la tienda. Sirve para los dos canales; la lógica del bot está en
 // src/lib/whatsapp-bot.ts.
 //
-// Variables de entorno:
-//   WHATSAPP_WEBHOOK_TOKEN  clave secreta; Evolution llama a /api/whatsapp?token=<clave>
+// API oficial de Meta (recomendada):
+//   WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID  (ver src/lib/wa-cloud.ts)
+//   WHATSAPP_APP_SECRET     "clave secreta de la app" en Meta, para validar la firma de cada aviso
+//   WHATSAPP_VERIFY_TOKEN   texto al azar que se pega en Meta al configurar el webhook
+//   URL del webhook en Meta: <PUBLIC_SITE_URL>/api/whatsapp
+//
+// Evolution API:
+//   WHATSAPP_WEBHOOK_TOKEN  Evolution llama a /api/whatsapp?token=<clave>
 //   EVOLUTION_URL, EVOLUTION_API_KEY, EVOLUTION_INSTANCE  (ver src/lib/evolution.ts)
-//   OWNER_WHATSAPP          número del dueño para los avisos (ej: 5493431234567). Opcional.
+//
+// Para los dos:
+//   OWNER_WHATSAPP          número para los avisos (ej: 5493431234567). Opcional.
 //   PUBLIC_SITE_URL         URL pública de la web, para mandar las fotos (ej: https://adan.com.ar)
-import { handleMessage, type WaData } from "@/lib/whatsapp-bot";
+import { parseCloudWebhook, validSignature, type CloudWebhook } from "@/lib/wa-cloud-webhook";
+import { handleIncoming, handleMessage, type WaData } from "@/lib/whatsapp-bot";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function POST(req: Request) {
-  const secret = process.env.WHATSAPP_WEBHOOK_TOKEN;
-  if (!secret) return Response.json({ error: "Webhook sin configurar" }, { status: 503 });
-  if (new URL(req.url).searchParams.get("token") !== secret) return Response.json({ error: "No autorizado" }, { status: 401 });
+const json = (body: unknown, status = 200) => Response.json(body, { status });
 
-  let body: { event?: string; instance?: string; data?: WaData | WaData[] };
-  try {
-    body = await req.json();
-  } catch {
-    return Response.json({ error: "JSON inválido" }, { status: 400 });
+// Meta verifica la URL una vez, al configurar el webhook.
+export function GET(req: Request) {
+  const q = new URL(req.url).searchParams;
+  const token = process.env.WHATSAPP_VERIFY_TOKEN;
+  if (token && q.get("hub.mode") === "subscribe" && q.get("hub.verify_token") === token) {
+    return new Response(q.get("hub.challenge") ?? "", { status: 200 });
   }
+  return json({ error: "No autorizado" }, 403);
+}
+
+export async function POST(req: Request) {
+  const raw = await req.text();
+  let body: CloudWebhook & { event?: string; instance?: string; data?: WaData | WaData[] };
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    return json({ error: "JSON inválido" }, 400);
+  }
+
+  if (body.object === "whatsapp_business_account") {
+    const secret = process.env.WHATSAPP_APP_SECRET;
+    if (!secret) return json({ error: "Webhook sin configurar" }, 503);
+    if (!validSignature(raw, req.headers.get("x-hub-signature-256"), secret)) return json({ error: "Firma inválida" }, 401);
+    // Meta espera la respuesta enseguida: los mensajes se procesan después (el bot evita duplicados).
+    for (const m of parseCloudWebhook(body)) {
+      handleIncoming(m).catch((error) => console.error("[whatsapp] error procesando mensaje", error));
+    }
+    return json({ ok: true });
+  }
+
+  const secret = process.env.WHATSAPP_WEBHOOK_TOKEN;
+  if (!secret) return json({ error: "Webhook sin configurar" }, 503);
+  if (new URL(req.url).searchParams.get("token") !== secret) return json({ error: "No autorizado" }, 401);
 
   const event = (body.event || "").toLowerCase().replace(/_/g, ".");
   const instance = process.env.EVOLUTION_INSTANCE;
   if (event !== "messages.upsert" || (instance && body.instance && body.instance !== instance)) {
-    return Response.json({ ok: true, ignored: true });
+    return json({ ok: true, ignored: true });
   }
 
   const items = Array.isArray(body.data) ? body.data : body.data ? [body.data] : [];
@@ -37,5 +70,5 @@ export async function POST(req: Request) {
       console.error("[whatsapp] error procesando mensaje", error);
     }
   }
-  return Response.json({ ok: true });
+  return json({ ok: true });
 }

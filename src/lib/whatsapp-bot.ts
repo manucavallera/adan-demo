@@ -1,4 +1,4 @@
-// Bot de WhatsApp: recibe los mensajes que manda Evolution API y contesta con la IA.
+// Bot de WhatsApp: recibe los mensajes (API oficial de Meta o Evolution API) y contesta con la IA.
 //
 // Cómo se comporta:
 // - Junta los mensajes que el cliente manda seguidos (espera unos segundos) y contesta una vez.
@@ -15,7 +15,9 @@ import type { Prisma } from "@prisma/client";
 import { askBot, RefusalError, type BotReply, type InMsg } from "./bot";
 import { formatPrice, store } from "./config";
 import { prisma } from "./db";
-import { getMediaBase64, sendImage, sendText } from "./evolution";
+import { getMediaBase64 } from "./evolution";
+import { markReadTyping } from "./wa-cloud";
+import { notifyOwner as notifyOwnerRaw, provider, sendImage, sendText } from "./wa";
 import { getIgnoredNumbers, getShop, phoneKey } from "./shop";
 
 const WAIT = 4_000; // espera para juntar mensajes seguidos
@@ -38,6 +40,23 @@ type Chat = {
   name: string;
   phone: string; // solo dígitos, "" si WhatsApp no lo informa
   handoff: string;
+  lastInId: string; // último mensaje del cliente, para marcarlo leído y mostrar "escribiendo..."
+};
+
+// Mensaje entrante, igual para la API oficial y para Evolution.
+export type Incoming = {
+  jid: string; // id del chat (número@s.whatsapp.net)
+  id: string; // id del mensaje
+  fromMe: boolean; // lo mandó la tienda desde el celular
+  phone: string; // solo dígitos, "" si no se sabe
+  name?: string;
+  text: string;
+  kind: "text" | "image" | "audio" | "other";
+  image?: {
+    base64?: string;
+    mimetype?: string;
+    load?: () => Promise<{ base64?: string; mimetype?: string }>;
+  };
 };
 
 // Se guarda en globalThis para que el webhook y el panel compartan el mismo estado.
@@ -95,6 +114,7 @@ async function loadChat(jid: string, now: number): Promise<Chat> {
     name: row?.name ?? "",
     phone: row?.phone ?? "",
     handoff: row?.handoff ?? "",
+    lastInId: "",
   };
   chats.set(jid, chat);
   return chat;
@@ -187,13 +207,8 @@ async function send(to: string, text: string) {
 }
 
 async function notifyOwner(text: string) {
-  const owner = process.env.OWNER_WHATSAPP?.replace(/\D/g, "");
-  if (!owner) return;
-  try {
-    await send(owner, text);
-  } catch (error) {
-    console.error("[whatsapp] no se pudo avisar al dueño", error);
-  }
+  const id = await notifyOwnerRaw(text);
+  if (id) remember(botSent, id);
 }
 
 function clientLine(chat: Chat) {
@@ -255,6 +270,12 @@ async function flush(jid: string) {
   const history = trim([...chat.history, merge(chat.pending)]);
   chat.pending = [];
   chat.busy = true;
+  if (provider() === "cloud" && chat.lastInId) {
+    // Tildes azules + "escribiendo..." mientras piensa la IA.
+    markReadTyping(chat.lastInId).catch((error) =>
+      console.error("[whatsapp] no se pudo marcar leído", error),
+    );
+  }
   try {
     const shop = await getShop();
     const r = await askBot(history, "whatsapp", shop);
@@ -262,7 +283,7 @@ async function flush(jid: string) {
 
     const site = process.env.PUBLIC_SITE_URL?.replace(/\/+$/, "");
     if (site) {
-      for (const code of r.productos.slice(0, 3)) {
+      for (const code of r.productos.slice(0, 2)) {
         const p = shop.products.find((x) => x.id === code);
         if (!p) continue;
         try {
@@ -326,6 +347,7 @@ async function flush(jid: string) {
   }
 }
 
+// Adaptador de Evolution API (evento messages.upsert).
 export async function handleMessage(d: WaData) {
   const key = d.key;
   const jid = key?.remoteJid;
@@ -336,19 +358,45 @@ export async function handleMessage(d: WaData) {
     jid.endsWith("@newsletter")
   )
     return;
-  if (seen.has(key.id)) return;
-  remember(seen, key.id);
+  const m = d.message;
+  const id = key.id;
+  await handleIncoming({
+    jid,
+    id,
+    fromMe: Boolean(key.fromMe),
+    phone: digits(jid) || digits(key.remoteJidAlt),
+    name: d.pushName,
+    text: textOf(m),
+    kind: m?.imageMessage
+      ? "image"
+      : m?.audioMessage
+        ? "audio"
+        : textOf(m)
+          ? "text"
+          : "other",
+    image: m?.imageMessage
+      ? {
+          base64: m.base64,
+          mimetype: m.imageMessage.mimetype,
+          load: () => getMediaBase64(id),
+        }
+      : undefined,
+  });
+}
+
+export async function handleIncoming(m: Incoming) {
+  const { jid, phone, text } = m;
+  if (seen.has(m.id)) return;
+  remember(seen, m.id);
 
   const owner = process.env.OWNER_WHATSAPP?.replace(/\D/g, "");
-  const phone = digits(jid) || digits(key.remoteJidAlt);
   if (owner && phone === owner) return; // charla con el dueño: el bot no se mete
   if (phone && (await getIgnoredNumbers()).includes(phoneKey(phone))) return; // contacto personal
 
-  const text = textOf(d.message);
   const chat = await getChat(jid);
   if (phone) chat.phone = phone;
 
-  if (key.fromMe) {
+  if (m.fromMe) {
     // Escribió el dueño desde el celular de la tienda.
     if (text.toLowerCase() === "#bot") {
       resume(chat);
@@ -356,12 +404,13 @@ export async function handleMessage(d: WaData) {
       await save(jid, chat);
       return;
     }
-    // Los mensajes del bot también llegan como propios: se reconocen por id,
-    // o por llegar mientras el bot está respondiendo (el id puede llegar después).
+    // Los mensajes del bot pueden volver como propios: se reconocen por id. En Evolution
+    // también por llegar mientras el bot responde (ahí el id puede llegar después).
+    // La API oficial solo avisa lo que el dueño manda desde la app, así que no hace falta.
+    if (botSent.has(m.id)) return;
     if (
-      botSent.has(key.id) ||
-      chat.busy ||
-      Date.now() - chat.lastBotSend < 15_000
+      provider() === "evolution" &&
+      (chat.busy || Date.now() - chat.lastBotSend < 15_000)
     )
       return;
     pause(chat, "Lo atendió el dueño");
@@ -369,7 +418,7 @@ export async function handleMessage(d: WaData) {
     return;
   }
 
-  if (d.pushName) chat.name = d.pushName;
+  if (m.name) chat.name = m.name;
   if (Date.now() < chat.pausedUntil) return;
 
   const now = Date.now();
@@ -378,14 +427,14 @@ export async function handleMessage(d: WaData) {
     chat.hitsReset = now + 3_600_000;
   }
   if (++chat.hits > LIMIT) return;
+  chat.lastInId = m.id;
 
-  const m = d.message;
-  if (m?.imageMessage) {
-    let base64 = m.base64;
-    let mimetype = m.imageMessage.mimetype;
-    if (!base64) {
+  if (m.kind === "image") {
+    let base64 = m.image?.base64;
+    let mimetype = m.image?.mimetype;
+    if (!base64 && m.image?.load) {
       try {
-        const media = await getMediaBase64(key.id);
+        const media = await m.image.load();
         base64 = media.base64;
         mimetype = media.mimetype || mimetype;
       } catch (error) {
@@ -409,7 +458,7 @@ export async function handleMessage(d: WaData) {
         text: text || "(mandó una foto que no se pudo ver)",
       });
     }
-  } else if (m?.audioMessage) {
+  } else if (m.kind === "audio") {
     chat.lastBotSend = Date.now();
     try {
       await send(
