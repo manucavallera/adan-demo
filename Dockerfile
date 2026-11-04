@@ -25,7 +25,8 @@ COPY --from=build /app/public ./public
 COPY --from=build /app/prisma ./prisma
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY docker-entrypoint.sh ./
-RUN mkdir -p /app/data/uploads && chown -R node:node /app/data && chmod +x docker-entrypoint.sh
+# .next/cache: Next guarda ahí las páginas que regenera (ISR); tiene que poder escribir el usuario node.
+RUN mkdir -p /app/data/uploads /app/.next/cache && chown -R node:node /app/data /app/.next/cache && chmod +x docker-entrypoint.sh
 USER node
 EXPOSE 3000
 CMD ["./docker-entrypoint.sh"]
