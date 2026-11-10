@@ -16,7 +16,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npx prisma generate && npm run build
 
 FROM node:20-alpine
-RUN apk add --no-cache openssl && npm i -g prisma@6.19.3
+RUN apk add --no-cache openssl su-exec && npm i -g prisma@6.19.3
 WORKDIR /app
 ENV NODE_ENV=production NEXT_TELEMETRY_DISABLED=1 PORT=3000 HOSTNAME=0.0.0.0 UPLOAD_DIR=/app/data/uploads
 COPY --from=build /app/.next/standalone ./
@@ -27,6 +27,6 @@ COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY docker-entrypoint.sh ./
 # .next/cache: Next guarda ahí las páginas que regenera (ISR); tiene que poder escribir el usuario node.
 RUN mkdir -p /app/data/uploads /app/.next/cache && chown -R node:node /app/data /app/.next/cache && chmod +x docker-entrypoint.sh
-USER node
+# Arranca como root solo para dar permisos al volumen de fotos; después el entrypoint pasa al usuario node.
 EXPOSE 3000
 CMD ["./docker-entrypoint.sh"]

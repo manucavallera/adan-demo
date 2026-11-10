@@ -20,6 +20,10 @@ export async function POST(req: Request) {
     return Response.json({ src: await saveImage(await file.arrayBuffer()) });
   } catch (error) {
     console.error("[panel] error al guardar foto", error);
+    // Error del disco (permisos o volumen): no es culpa de la foto.
+    if (error && typeof error === "object" && "code" in error) {
+      return Response.json({ error: "No se pudo guardar la foto en el servidor. Avisale a quien te armó la web." }, { status: 500 });
+    }
     return Response.json({ error: "No se pudo procesar la foto. Probá con otra (JPG o PNG)." }, { status: 422 });
   }
 }
