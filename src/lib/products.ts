@@ -41,22 +41,26 @@ export type Product = {
 
 // Todas las categorías que el dueño puede elegir en el panel. La web muestra solo las que tienen
 // prendas visibles (ver shopCategories). `image` es la foto de reserva si la categoría no tiene fotos.
-export const categories: { id: Category; label: string; image?: string }[] = [
-  { id: "remeras", label: "Remeras", image: "/img/adan/remera-box-logo.jpg" },
-  { id: "camisas", label: "Camisas" },
-  { id: "chombas", label: "Chombas" },
-  { id: "buzos", label: "Buzos" },
-  { id: "sweaters", label: "Sweaters" },
-  { id: "camperas", label: "Camperas", image: "/img/adan/campera-rompeviento.jpg" },
-  { id: "sacos", label: "Sacos y trajes" },
-  { id: "pantalones", label: "Pantalones", image: "/img/adan/pantalon-vestir.jpg" },
-  { id: "jeans", label: "Jeans" },
-  { id: "bermudas", label: "Bermudas", image: "/img/adan/bermuda-surf.jpg" },
-  { id: "mallas", label: "Mallas" },
-  { id: "calzado", label: "Calzado" },
-  { id: "gorras", label: "Gorras", image: "/img/adan/gorras.jpg" },
-  { id: "accesorios", label: "Accesorios" },
+export type CategoryGroup = "Parte de arriba" | "Abrigo" | "Parte de abajo" | "Calzado y accesorios";
+
+export const categories: { id: Category; label: string; group: CategoryGroup; image?: string }[] = [
+  { id: "remeras", label: "Remeras", group: "Parte de arriba", image: "/img/adan/remera-box-logo.jpg" },
+  { id: "camisas", label: "Camisas", group: "Parte de arriba" },
+  { id: "chombas", label: "Chombas", group: "Parte de arriba" },
+  { id: "buzos", label: "Buzos", group: "Abrigo" },
+  { id: "sweaters", label: "Sweaters", group: "Abrigo" },
+  { id: "camperas", label: "Camperas", group: "Abrigo", image: "/img/adan/campera-rompeviento.jpg" },
+  { id: "sacos", label: "Sacos y trajes", group: "Abrigo" },
+  { id: "pantalones", label: "Pantalones", group: "Parte de abajo", image: "/img/adan/pantalon-vestir.jpg" },
+  { id: "jeans", label: "Jeans", group: "Parte de abajo" },
+  { id: "bermudas", label: "Bermudas", group: "Parte de abajo", image: "/img/adan/bermuda-surf.jpg" },
+  { id: "mallas", label: "Mallas", group: "Parte de abajo" },
+  { id: "calzado", label: "Calzado", group: "Calzado y accesorios" },
+  { id: "gorras", label: "Gorras", group: "Calzado y accesorios", image: "/img/adan/gorras.jpg" },
+  { id: "accesorios", label: "Accesorios", group: "Calzado y accesorios" },
 ];
+
+export const categoryGroups = [...new Set(categories.map((c) => c.group))];
 
 // Categorías con al menos una prenda visible, en el orden de arriba, con la foto de su primera prenda.
 export function shopCategories(products: Product[]) {

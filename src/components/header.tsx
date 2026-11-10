@@ -26,7 +26,8 @@ export function Header() {
         </Link>
 
         <nav aria-label="Categorías" className="hidden items-center gap-8 md:flex">
-          {categories.map((c) => (
+          {/* Entran 6 en la barra; si hay más, "Ver todo" lleva al catálogo con los filtros. */}
+          {categories.slice(0, 6).map((c) => (
             <Link
               key={c.id}
               href={`/?cat=${c.id}#ropa`}
@@ -35,6 +36,11 @@ export function Header() {
               {c.label}
             </Link>
           ))}
+          {categories.length > 6 && (
+            <Link href="/#ropa" className="py-3 text-sm font-medium text-muted transition-colors hover:text-ink">
+              Ver todo
+            </Link>
+          )}
         </nav>
 
         <button

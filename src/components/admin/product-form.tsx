@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, CircleNotch, Trash, UploadSimple } from "@phosphor-icons/react";
-import { categories } from "@/lib/products";
+import { categories, categoryGroups } from "@/lib/products";
 import { deleteProduct, saveProduct, type ProductInput } from "@/app/admin/(panel)/productos/actions";
 import { Field, btnGhost, btnPrimary, input } from "./ui";
 
@@ -116,10 +116,16 @@ export function ProductForm({ initial, existingCodes }: { initial: ProductInput 
               }}
               className={input}
             >
-              {categories.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.label}
-                </option>
+              {categoryGroups.map((g) => (
+                <optgroup key={g} label={g}>
+                  {categories
+                    .filter((c) => c.group === g)
+                    .map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.label}
+                      </option>
+                    ))}
+                </optgroup>
               ))}
             </select>
           </Field>
