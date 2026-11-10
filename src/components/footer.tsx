@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { Truck, ArrowsClockwise, CreditCard, WhatsappLogo, InstagramLogo } from "@phosphor-icons/react/dist/ssr";
 import { formatPrice, store, waLink, type Settings } from "@/lib/config";
-import { categories } from "@/lib/products";
+import { shopCategories, type Product } from "@/lib/products";
 
-export function Footer({ settings }: { settings: Settings }) {
+export function Footer({ settings, products }: { settings: Settings; products: Product[] }) {
+  const categories = shopCategories(products);
   const info = [
     {
       icon: Truck,

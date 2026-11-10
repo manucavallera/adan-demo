@@ -6,7 +6,7 @@ import {
   WhatsappLogo,
   InstagramLogo,
 } from "@phosphor-icons/react/dist/ssr";
-import { categories } from "@/lib/products";
+import { shopCategories } from "@/lib/products";
 import { getShop } from "@/lib/shop";
 import { store } from "@/lib/config";
 import { WaLink } from "@/components/wa-link";
@@ -21,8 +21,9 @@ import {
 } from "@/components/motion-bits";
 
 export default async function Home() {
-  const { settings } = await getShop();
-  const [featured, ...rest] = categories;
+  const { settings, products } = await getShop();
+  // Una grande y hasta 4 chicas; el resto se ve con los filtros del catálogo.
+  const [featured, ...rest] = shopCategories(products).slice(0, 5);
 
   return (
     <main>
@@ -34,8 +35,10 @@ export default async function Home() {
             className="font-display text-[clamp(2.75rem,13vw,3rem)] leading-[1] uppercase sm:text-6xl md:text-6xl lg:text-7xl xl:text-8xl"
           />
           <p className="mt-6 max-w-[42ch] text-lg leading-relaxed text-muted">
-            {settings.installments ? `${settings.installments} y envíos` : "Envíos"} a todo el país. Comprá acá o
-            escribinos por WhatsApp.
+            {settings.installments
+              ? `${settings.installments} y envíos`
+              : "Envíos"}{" "}
+            a todo el país. Comprá acá o escribinos por WhatsApp.
           </p>
           <div className="mt-8 flex flex-col gap-3 sm:flex-row">
             <Link
@@ -80,11 +83,13 @@ export default async function Home() {
           </h2>
         </Reveal>
         <div className="mt-8 grid grid-cols-2 gap-3 md:grid-cols-4 md:grid-rows-2 md:gap-4">
-          <CategoryTile
-            cat={featured}
-            className="col-span-2 aspect-[4/3] md:row-span-2 md:aspect-auto"
-            big
-          />
+          {featured && (
+            <CategoryTile
+              cat={featured}
+              className="col-span-2 aspect-[4/3] md:row-span-2 md:aspect-auto"
+              big
+            />
+          )}
           {rest.map((c, i) => (
             <CategoryTile
               key={c.id}
@@ -198,7 +203,7 @@ function CategoryTile({
   big,
   delay = 0,
 }: {
-  cat: (typeof categories)[number];
+  cat: ReturnType<typeof shopCategories>[number];
   className?: string;
   big?: boolean;
   delay?: number;

@@ -4,11 +4,14 @@ import Link from "next/link";
 import { motion, AnimatePresence } from "motion/react";
 import { HandbagSimple } from "@phosphor-icons/react";
 import { useCart } from "./cart";
-import { categories } from "@/lib/products";
+import { shopCategories } from "@/lib/products";
+import { useShop } from "./shop";
 import { store } from "@/lib/config";
 
 export function Header() {
   const { count, setOpen } = useCart();
+  const { products } = useShop();
+  const categories = shopCategories(products);
 
   return (
     <header className="sticky top-0 z-30 border-b border-line bg-canvas/90 backdrop-blur-md">

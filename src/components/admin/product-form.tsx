@@ -7,12 +7,29 @@ import { categories } from "@/lib/products";
 import { deleteProduct, saveProduct, type ProductInput } from "@/app/admin/(panel)/productos/actions";
 import { Field, btnGhost, btnPrimary, input } from "./ui";
 
-const PREFIX: Record<string, string> = { remeras: "REM", pantalones: "PAN", bermudas: "BER", camperas: "CAM", gorras: "GOR" };
+const PREFIX: Record<string, string> = {
+  remeras: "REM",
+  camisas: "CMS",
+  chombas: "CHO",
+  buzos: "BUZ",
+  sweaters: "SWE",
+  camperas: "CAM",
+  sacos: "SAC",
+  pantalones: "PAN",
+  jeans: "JEA",
+  bermudas: "BER",
+  mallas: "MAL",
+  calzado: "CAL",
+  gorras: "GOR",
+  accesorios: "ACC",
+};
 
 const PRESETS: { label: string; sizes: string[] }[] = [
   { label: "S a XL", sizes: ["S", "M", "L", "XL"] },
-  { label: "Pantalón 42 a 48", sizes: ["42", "44", "46", "48"] },
+  { label: "S a XXL", sizes: ["S", "M", "L", "XL", "XXL"] },
+  { label: "Pantalón 38 a 50", sizes: ["38", "40", "42", "44", "46", "48", "50"] },
   { label: "Bermuda 38 a 44", sizes: ["38", "40", "42", "44"] },
+  { label: "Calzado 39 a 45", sizes: ["39", "40", "41", "42", "43", "44", "45"] },
   { label: "Talle único", sizes: ["Único"] },
 ];
 
