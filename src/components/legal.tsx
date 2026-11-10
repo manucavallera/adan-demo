@@ -5,7 +5,7 @@ import { store } from "@/lib/config";
 export function LegalPage({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <main className="mx-auto max-w-3xl px-4 py-16 md:px-8 md:py-20">
-      <h1 className="font-display text-5xl uppercase md:text-6xl">{title}</h1>
+      <h1 className="font-display text-[clamp(2.25rem,11vw,3rem)] leading-none uppercase break-words md:text-6xl">{title}</h1>
       <div className="mt-8 space-y-4 text-base leading-relaxed text-muted [&_h2]:mt-10 [&_h2]:text-lg [&_h2]:font-semibold [&_h2]:text-ink [&_strong]:text-ink">
         {children}
       </div>
