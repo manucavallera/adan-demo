@@ -82,3 +82,35 @@ export function dateAR(d: Date) {
     timeZone: "America/Argentina/Buenos_Aires",
   }).format(d);
 }
+
+export const PAGE_SIZE = 20;
+
+// Número de página pedido en la URL (?p=2), siempre 1 o más.
+export function pageFrom(raw: string | undefined) {
+  const n = Math.floor(Number(raw));
+  return n >= 1 ? n : 1;
+}
+
+// "Anterior / Página 2 de 5 / Siguiente". Mantiene los filtros de la URL.
+export function Pagination({ page, total, params, path }: { page: number; total: number; params: Record<string, string | undefined>; path: string }) {
+  const pages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+  if (pages <= 1) return null;
+  const href = (p: number) => {
+    const q = new URLSearchParams();
+    for (const [k, v] of Object.entries(params)) if (v && k !== "p" && k !== "ok") q.set(k, v);
+    if (p > 1) q.set("p", String(p));
+    const s = q.toString();
+    return s ? `${path}?${s}` : path;
+  };
+  const link = "flex h-11 items-center gap-1 border border-line px-4 text-sm font-medium hover:border-ink";
+  const off = "flex h-11 items-center gap-1 border border-line px-4 text-sm text-muted opacity-40";
+  return (
+    <nav aria-label="Páginas" className="mt-6 flex items-center justify-between gap-3">
+      {page > 1 ? <a href={href(page - 1)} className={link}>← Anterior</a> : <span className={off}>← Anterior</span>}
+      <span className="text-sm text-muted tabular-nums">
+        Página {Math.min(page, pages)} de {pages}
+      </span>
+      {page < pages ? <a href={href(page + 1)} className={link}>Siguiente →</a> : <span className={off}>Siguiente →</span>}
+    </nav>
+  );
+}

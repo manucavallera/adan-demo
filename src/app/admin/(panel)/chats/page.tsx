@@ -1,10 +1,15 @@
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { PageTitle, dateAR } from "@/components/admin/ui";
+import { PAGE_SIZE, PageTitle, Pagination, dateAR, pageFrom } from "@/components/admin/ui";
 import { ChatToggle } from "@/components/admin/chat-toggle";
 
-export default async function ChatsPage() {
-  const chats = await prisma.botChat.findMany({ orderBy: { lastAt: "desc" }, take: 100 });
+export default async function ChatsPage({ searchParams }: { searchParams: Promise<{ p?: string }> }) {
+  const params = await searchParams;
+  const page = pageFrom(params.p);
+  const [chats, total] = await Promise.all([
+    prisma.botChat.findMany({ orderBy: { lastAt: "desc" }, skip: (page - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+    prisma.botChat.count(),
+  ]);
   const now = new Date();
 
   return (
@@ -37,7 +42,8 @@ export default async function ChatsPage() {
           );
         })}
       </ul>
-      {chats.length === 0 && <p className="py-10 text-center text-muted">Todavía no hay charlas. Aparecen cuando alguien le escribe al WhatsApp de la tienda.</p>}
+      <Pagination page={page} total={total} params={params} path="/admin/chats" />
+      {chats.length === 0 && page === 1 && <p className="py-10 text-center text-muted">Todavía no hay charlas. Aparecen cuando alguien le escribe al WhatsApp de la tienda.</p>}
     </>
   );
 }

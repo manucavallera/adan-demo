@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { formatPrice, waLink } from "@/lib/config";
 import { orderCode, PAYMENT_LABEL, withdrawalCode } from "@/lib/orders";
 import { markWithdrawalHandled } from "./actions";
-import { PageTitle, STATUS_BAR, STATUS_LABEL, StatusBadge, dateAR } from "@/components/admin/ui";
+import { PAGE_SIZE, PageTitle, Pagination, STATUS_BAR, STATUS_LABEL, StatusBadge, dateAR, pageFrom } from "@/components/admin/ui";
 
 const FILTERS: { id: string; label: string; where: OrderStatus[] | null }[] = [
   { id: "abiertos", label: "Para atender", where: ["PENDIENTE", "PAGADO"] },
@@ -14,15 +14,22 @@ const FILTERS: { id: string; label: string; where: OrderStatus[] | null }[] = [
   { id: "todos", label: "Todos", where: null },
 ];
 
-export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ ver?: string }> }) {
-  const { ver = "abiertos" } = await searchParams;
+export default async function OrdersPage({ searchParams }: { searchParams: Promise<{ ver?: string; p?: string }> }) {
+  const params = await searchParams;
+  const { ver = "abiertos" } = params;
   const filter = FILTERS.find((f) => f.id === ver) ?? FILTERS[0];
-  const orders = await prisma.order.findMany({
-    where: filter.where ? { status: { in: filter.where } } : {},
-    include: { items: true },
-    orderBy: { createdAt: "desc" },
-    take: 100,
-  });
+  const page = pageFrom(params.p);
+  const where = filter.where ? { status: { in: filter.where } } : {};
+  const [orders, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      include: { items: true },
+      orderBy: { createdAt: "desc" },
+      skip: (page - 1) * PAGE_SIZE,
+      take: PAGE_SIZE,
+    }),
+    prisma.order.count({ where }),
+  ]);
   const withdrawals = await prisma.withdrawal.findMany({ where: { handled: false }, orderBy: { createdAt: "asc" } });
 
   return (
@@ -101,6 +108,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
         ))}
       </ul>
       {orders.length === 0 && <p className="py-10 text-center text-muted">No hay pedidos {filter.id === "todos" ? "todavía" : `en "${filter.label}"`}.</p>}
+      <Pagination page={page} total={total} params={{ ...params, ver }} path="/admin/pedidos" />
       <p className="mt-4 text-xs text-muted">Estados: {Object.values(STATUS_LABEL).join(" → ")}.</p>
     </>
   );

@@ -9,6 +9,7 @@ const epilogue = Epilogue({ variable: "--font-epilogue", subsets: ["latin"] });
 export const metadata: Metadata = {
   title: `${store.name} | ${store.tagline}`,
   description: "Ropa de hombre formal y urbana en Viale, Entre Ríos. Envíos a todo el país y 3 cuotas sin interés.",
+  icons: { icon: "/icons/favicon-48.png", apple: "/icons/apple-touch-icon.png" },
 };
 
 export const viewport: Viewport = {
