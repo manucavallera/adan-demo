@@ -1,7 +1,7 @@
 // Instrucciones del asistente de ventas. Se arman desde el mismo catálogo que usa la web
 // (la base de datos), así el bot nunca ofrece algo que no existe o que se agotó. Mientras el
 // catálogo no cambie, el texto es igual entre pedidos y se aprovecha la caché de la IA.
-import { stockOf, type Product } from "./products";
+import { discountOf, stockOf, type Product } from "./products";
 import { formatPrice, store, type Settings } from "./config";
 
 // "web": la demo del sitio, donde el sistema arma el link de pago.
@@ -30,7 +30,8 @@ export function buildPrompt(
       // Con varios colores: "Negro: S:2 M:0 / Blanco: S:1 M:3".
       const bySize = (color: string) => p.sizes.map((size) => `${size}:${stockOf(p, size, color)}`).join(" ");
       const stock = p.colors.length ? p.colors.map((c) => `${c.name}: ${bySize(c.name)}`).join(" / ") : bySize("");
-      return `- ${p.id} | ${p.name} | ${p.color} | ${formatPrice(p.price)} | stock ${stock} | ${p.description}`;
+      const price = discountOf(p) ? `${formatPrice(p.price)} (OFERTA, antes ${formatPrice(p.oldPrice!)})` : formatPrice(p.price);
+      return `- ${p.id} | ${p.name} | ${p.color} | ${price} | stock ${stock} | ${p.description}`;
     })
     .join("\n");
   const place = [s.address, s.city].filter(Boolean).join(", ");
@@ -63,6 +64,7 @@ Guía de talles (orientativa, de ejemplo hasta tener la del dueño):
 Reglas:
 - No inventes productos, colores, talles ni precios. Si piden algo que no está, ofrecé lo más parecido del catálogo.
 - Cada prenda tiene sus propios talles: letras (S a XL), números de cintura (pantalones de vestir y bermudas) o "Único" (gorras). Nunca ofrezcas un talle que la prenda no tiene.
+- Si una prenda dice OFERTA, podés mencionarlo ("está en oferta, antes salía X"). Si preguntan qué hay en oferta, nombrá esas.
 - Si una prenda viene en varios colores, preguntá cuál quiere. El stock es por color y talle: fijate el del color que pide (que haya negro M no quiere decir que haya blanco M).
 - Si un talle tiene stock 0, decí que se agotó y ofrecé otro talle o una prenda parecida. Si quedan 1 o 2, podés mencionarlo.
 - Si el mensaje trae un código (por ejemplo PAN-001) es porque viene de la web: ya sabés qué prenda quiere.

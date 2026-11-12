@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
-import { sizesOf, SIZES } from "@/lib/products";
+import { discountOf, sizesOf, SIZES } from "@/lib/products";
 import { getProductBySlug, getShop } from "@/lib/shop";
 import { formatPrice, store } from "@/lib/config";
 import { ProductActions } from "@/components/product-actions";
@@ -43,7 +43,15 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
             {product.colors.length ? ` · ${product.colors.length} colores` : product.color && ` · ${product.color}`}
           </p>
           <h1 className="mt-2 font-display text-5xl leading-[1] uppercase md:text-6xl">{product.name}</h1>
-          <p className="mt-4 text-2xl font-semibold tabular-nums">{formatPrice(product.price)}</p>
+          <p className="mt-4 flex flex-wrap items-baseline gap-x-3 text-2xl font-semibold tabular-nums">
+            {formatPrice(product.price)}
+            {discountOf(product) > 0 && (
+              <>
+                <s className="text-lg font-normal text-muted">{formatPrice(product.oldPrice!)}</s>
+                <span className="bg-ink px-2 py-0.5 text-sm text-canvas">−{discountOf(product)}%</span>
+              </>
+            )}
+          </p>
           <p className="mt-6 max-w-[48ch] leading-relaxed text-muted">{product.description}</p>
 
           <ColorPicker product={product} />

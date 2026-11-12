@@ -14,6 +14,7 @@ export type ProductInput = {
   name: string;
   category: string;
   price: number;
+  oldPrice: number; // 0 = sin oferta
   color: string;
   description: string;
   images: string[]; // fotos generales (prenda de un solo color)
@@ -65,6 +66,8 @@ export async function saveProduct(input: ProductInput): Promise<{ error?: string
   if (name.length < 2) return { error: "Falta el nombre." };
   if (!categories.some((c) => c.id === input.category)) return { error: "Elegí una categoría." };
   if (!(input.price > 0)) return { error: "El precio tiene que ser mayor a 0." };
+  const oldPrice = Math.round(input.oldPrice) || 0;
+  if (oldPrice && oldPrice <= input.price) return { error: "El precio de antes tiene que ser mayor al precio de oferta. Si no está en oferta, dejalo vacío." };
   if (sizes.length === 0) return { error: "Cargá al menos un talle." };
   if (new Set(sizes.map((s) => s.toLowerCase())).size !== sizes.length) return { error: "Hay talles repetidos." };
   if (input.colors.length > 0 && colors.length === 0) return { error: "Poné el nombre de cada color." };
@@ -78,6 +81,7 @@ export async function saveProduct(input: ProductInput): Promise<{ error?: string
     name,
     category: input.category,
     price: Math.round(input.price),
+    oldPrice,
     color: colors.length ? "" : input.color.trim(),
     colors,
     description: input.description.trim(),

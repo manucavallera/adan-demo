@@ -21,7 +21,12 @@ export function Header() {
         </p>
       )}
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-6 px-4 md:px-8">
-        <Link href="/" className="font-display text-3xl tracking-wide uppercase">
+        <Link href="/" className="flex items-center gap-2 font-display text-3xl tracking-wide uppercase">
+          {/* Estatua del logo de la tienda. Va como máscara para que tome el color del texto (claro y oscuro). */}
+          <span
+            aria-hidden
+            className="h-10 w-9 bg-ink [mask:url(/img/adan/logo-estatua.png)_center/contain_no-repeat]"
+          />
           {store.name}
         </Link>
 

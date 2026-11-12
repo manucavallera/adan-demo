@@ -33,6 +33,7 @@ export type Product = {
   name: string;
   category: Category;
   price: number;
+  oldPrice?: number; // precio de antes, solo si está en oferta
   image: string; // foto principal
   images: string[];
   color: string;
@@ -78,6 +79,11 @@ export function shopCategories(products: Product[]) {
 
 export function sizesOf(p: Product) {
   return p.sizes;
+}
+
+// Porcentaje de descuento redondeado (ej: 20), o 0 si no está en oferta.
+export function discountOf(p: { price: number; oldPrice?: number }) {
+  return p.oldPrice && p.oldPrice > p.price ? Math.round((1 - p.price / p.oldPrice) * 100) : 0;
 }
 
 // Clave del stock. Sin color es solo el talle, así las prendas de un solo color quedan como antes.

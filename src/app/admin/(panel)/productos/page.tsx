@@ -1,7 +1,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { categories, parseColors, type ProductColor } from "@/lib/products";
+import { categories, discountOf, parseColors, type ProductColor } from "@/lib/products";
 import { formatPrice } from "@/lib/config";
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { Notice, PageTitle, btnPrimary } from "@/components/admin/ui";
@@ -47,6 +47,7 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 <p className="truncate font-semibold">{p.name}</p>
                 <p className="text-sm text-muted">
                   {p.id} · {label[p.category] ?? p.category} · {formatPrice(p.price)}
+                  {discountOf(p) > 0 && <span className="ml-2 bg-danger-soft px-1.5 py-0.5 text-xs font-semibold text-danger">Oferta −{discountOf(p)}%</span>}
                 </p>
                 <p className="text-xs text-accent underline">Editar</p>
               </div>

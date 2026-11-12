@@ -26,6 +26,7 @@ export function toProduct(p: Row): Product {
     name: p.name,
     category: p.category as Product["category"],
     price: p.price,
+    oldPrice: p.oldPrice > p.price ? p.oldPrice : undefined,
     image: p.images[0] ?? "/img/sin-foto.svg",
     images: p.images,
     color: colors.length ? colors.map((c) => c.name).join(", ") : p.color,

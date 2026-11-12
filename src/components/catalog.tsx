@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { categories, shopCategories, sizeStock, SIZES, type Category, type Size } from "@/lib/products";
+import { categories, discountOf, shopCategories, sizeStock, SIZES, type Category, type Size } from "@/lib/products";
 import { useShop } from "./shop";
 import { ProductCard } from "./product-card";
 
@@ -14,20 +14,22 @@ const chipOff = "border-line text-ink hover:border-ink";
 
 export function Catalog() {
   const params = useSearchParams();
-  const [cat, setCat] = useState<Category | "todo">("todo");
+  const [cat, setCat] = useState<Category | "todo" | "ofertas">("todo");
   const [size, setSize] = useState<Size | null>(null);
   const { products } = useShop();
 
   // Los links del menú (/?cat=buzos) filtran directo.
   useEffect(() => {
     const c = params.get("cat");
-    if (c && categories.some((x) => x.id === c)) setCat(c as Category);
+    if (c === "ofertas" || (c && categories.some((x) => x.id === c))) setCat(c as Category | "ofertas");
   }, [params]);
 
   const list = useMemo(
     () =>
       products.filter(
-        (p) => (cat === "todo" || p.category === cat) && (!size || sizeStock(p, size) > 0),
+        (p) =>
+          (cat === "todo" || p.category === cat || (cat === "ofertas" && discountOf(p) > 0)) &&
+          (!size || sizeStock(p, size) > 0),
       ),
     [cat, size, products],
   );
@@ -36,7 +38,11 @@ export function Catalog() {
     <div>
       <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
         <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto pr-12 pl-4 [mask-image:linear-gradient(to_right,black_85%,transparent)] md:mx-0 md:px-0 md:[mask-image:none]">
-          {[{ id: "todo" as const, label: "Todo" }, ...shopCategories(products)].map((c) => (
+          {[
+            { id: "todo" as const, label: "Todo" },
+            ...(products.some((p) => discountOf(p) > 0) ? [{ id: "ofertas" as const, label: "Ofertas" }] : []),
+            ...shopCategories(products),
+          ].map((c) => (
             <button
               key={c.id}
               type="button"

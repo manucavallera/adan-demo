@@ -34,6 +34,7 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
                 name: product.name,
                 category: product.category,
                 price: product.price,
+                oldPrice: product.oldPrice,
                 color: product.color,
                 description: product.description,
                 images: product.images,

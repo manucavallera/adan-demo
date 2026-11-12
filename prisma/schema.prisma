@@ -18,6 +18,7 @@ model Product {
   name        String
   category    String
   price       Int
+  oldPrice    Int       @default(0) // precio de antes; si es mayor que price, la prenda está en oferta
   color       String    @default("") // texto libre si la prenda viene en un solo color
   // Colores con stock propio: [{ name, hex, images }]. Vacío = un solo color (variantes con color "").
   colors      Json      @default("[]")

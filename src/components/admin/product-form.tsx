@@ -3,7 +3,7 @@
 import Image from "next/image";
 import { useState, useTransition } from "react";
 import { ArrowLeft, ArrowRight, CircleNotch, Plus, Trash, UploadSimple } from "@phosphor-icons/react";
-import { categories, categoryGroups, stockKey } from "@/lib/products";
+import { categories, categoryGroups, discountOf, stockKey } from "@/lib/products";
 import { deleteProduct, saveProduct, type ProductInput } from "@/app/admin/(panel)/productos/actions";
 import { Field, btnGhost, btnPrimary, input } from "./ui";
 
@@ -114,6 +114,7 @@ export function ProductForm({ initial, existingCodes }: { initial: ProductInput 
       name: "",
       category: "remeras",
       price: 0,
+      oldPrice: 0,
       color: "",
       description: "",
       images: [],
@@ -271,9 +272,18 @@ export function ProductForm({ initial, existingCodes }: { initial: ProductInput 
         <Field label="Nombre" htmlFor="name">
           <input id="name" value={p.name} onChange={(e) => set("name", e.target.value)} required maxLength={80} className={input} placeholder="Remera Box Logo" />
         </Field>
-        <Field label="Precio" htmlFor="price" hint="En pesos, sin puntos. Mismo precio para todos los colores.">
-          <input id="price" type="number" inputMode="numeric" min={1} value={p.price || ""} onChange={(e) => set("price", Number(e.target.value))} required className={`${input} sm:max-w-60`} />
-        </Field>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <Field label="Precio" htmlFor="price" hint="En pesos, sin puntos. Mismo precio para todos los colores.">
+            <input id="price" type="number" inputMode="numeric" min={1} value={p.price || ""} onChange={(e) => set("price", Number(e.target.value))} required className={input} />
+          </Field>
+          <Field
+            label="Precio de antes (oferta)"
+            htmlFor="oldPrice"
+            hint={discountOf(p) ? `Se ve tachado con −${discountOf(p)}%. Borralo para sacar la oferta.` : "Opcional. Si lo cargás, la prenda sale en Ofertas."}
+          >
+            <input id="oldPrice" type="number" inputMode="numeric" min={0} value={p.oldPrice || ""} onChange={(e) => set("oldPrice", Number(e.target.value))} placeholder="Sin oferta" className={input} />
+          </Field>
+        </div>
         <Field label="Descripción" htmlFor="description" hint="Tela, calce, para qué ocasión. El bot usa este texto para recomendar.">
           <textarea id="description" value={p.description} onChange={(e) => set("description", e.target.value)} rows={4} maxLength={600} className={`${input} h-auto py-2`} />
         </Field>
