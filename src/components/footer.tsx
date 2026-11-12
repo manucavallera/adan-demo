@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Truck, ArrowsClockwise, CreditCard, WhatsappLogo, InstagramLogo } from "@phosphor-icons/react/dist/ssr";
+import { Truck, ArrowsClockwise, CreditCard, WhatsappLogo, InstagramLogo, Lock } from "@phosphor-icons/react/dist/ssr";
 import { formatPrice, store, waLink, type Settings } from "@/lib/config";
 import { shopCategories, type Product } from "@/lib/products";
 
@@ -83,6 +83,12 @@ export function Footer({ settings, products }: { settings: Settings; products: P
               >
                 Defensa del consumidor
               </a>
+            </li>
+            {/* Acceso de Paco al panel. Pide contraseña, así que no importa que lo vean los clientes. */}
+            <li>
+              <Link href="/admin" rel="nofollow" className="inline-flex min-h-11 items-center gap-1.5 hover:text-ink">
+                <Lock size={14} aria-hidden /> Panel del dueño
+              </Link>
             </li>
           </ul>
         </div>
