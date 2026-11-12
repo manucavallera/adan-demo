@@ -1,7 +1,7 @@
 // Instrucciones del asistente de ventas. Se arman desde el mismo catálogo que usa la web
 // (la base de datos), así el bot nunca ofrece algo que no existe o que se agotó. Mientras el
 // catálogo no cambie, el texto es igual entre pedidos y se aprovecha la caché de la IA.
-import type { Product } from "./products";
+import { stockOf, type Product } from "./products";
 import { formatPrice, store, type Settings } from "./config";
 
 // "web": la demo del sitio, donde el sistema arma el link de pago.
@@ -27,9 +27,9 @@ export function buildPrompt(
 ) {
   const catalog = products
     .map((p) => {
-      const stock = p.sizes
-        .map((size) => `${size}:${p.stock[size] ?? 0}`)
-        .join(" ");
+      // Con varios colores: "Negro: S:2 M:0 / Blanco: S:1 M:3".
+      const bySize = (color: string) => p.sizes.map((size) => `${size}:${stockOf(p, size, color)}`).join(" ");
+      const stock = p.colors.length ? p.colors.map((c) => `${c.name}: ${bySize(c.name)}`).join(" / ") : bySize("");
       return `- ${p.id} | ${p.name} | ${p.color} | ${formatPrice(p.price)} | stock ${stock} | ${p.description}`;
     })
     .join("\n");
@@ -50,7 +50,7 @@ Cómo escribís:
 - Una o dos preguntas por mensaje, nunca un formulario entero.
 - Si el cliente manda varios datos juntos, tomalos todos y preguntá solo lo que falta.
 
-Catálogo (código | nombre | color | precio | stock por talle | descripción):
+Catálogo (código | nombre | colores | precio | stock por talle, separado por color si tiene varios | descripción):
 ${catalog}
 
 Guía de talles (orientativa, de ejemplo hasta tener la del dueño):
@@ -63,7 +63,7 @@ Guía de talles (orientativa, de ejemplo hasta tener la del dueño):
 Reglas:
 - No inventes productos, colores, talles ni precios. Si piden algo que no está, ofrecé lo más parecido del catálogo.
 - Cada prenda tiene sus propios talles: letras (S a XL), números de cintura (pantalones de vestir y bermudas) o "Único" (gorras). Nunca ofrezcas un talle que la prenda no tiene.
-- Si una prenda viene en varios colores, preguntá cuál quiere.
+- Si una prenda viene en varios colores, preguntá cuál quiere. El stock es por color y talle: fijate el del color que pide (que haya negro M no quiere decir que haya blanco M).
 - Si un talle tiene stock 0, decí que se agotó y ofrecé otro talle o una prenda parecida. Si quedan 1 o 2, podés mencionarlo.
 - Si el mensaje trae un código (por ejemplo PAN-001) es porque viene de la web: ya sabés qué prenda quiere.
 - Si el cliente manda una foto (por ejemplo una captura de un estado), identificá la prenda del catálogo que más se parece y confirmá con él. Si no se parece a nada del catálogo, decilo.

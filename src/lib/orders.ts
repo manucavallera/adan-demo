@@ -6,6 +6,7 @@ import { formatPrice, shippingFor, store } from "./config";
 import { prisma } from "./db";
 import { notifyOwner } from "./wa";
 import { getShop, revalidateShop } from "./shop";
+import { stockKey } from "./products";
 
 export type NewOrder = {
   name: string;
@@ -15,10 +16,15 @@ export type NewOrder = {
   city: string;
   zip: string;
   payment: "mercadopago" | "transferencia" | "efectivo";
-  items: { id: string; size: string; qty: number }[];
+  items: { id: string; color: string; size: string; qty: number }[];
 };
 
 export class OrderError extends Error {}
+
+// "color Negro, talle M" o "talle M" si la prenda es de un solo color.
+export function itemLabel(it: { color: string; size: string }) {
+  return it.color ? `color ${it.color}, talle ${it.size}` : `talle ${it.size}`;
+}
 
 export const PAYMENT_LABEL: Record<string, string> = {
   mercadopago: "Mercado Pago",
@@ -41,8 +47,8 @@ export async function createOrder(input: NewOrder) {
   // Los precios salen siempre de la base, nunca de lo que manda el navegador.
   const items = input.items.map((it) => {
     const p = products.find((x) => x.id === it.id);
-    if (!p || !p.sizes.includes(it.size)) throw new OrderError("Una prenda del carrito ya no está disponible.");
-    return { productId: p.id, name: p.name, size: it.size, qty: it.qty, price: p.price };
+    if (!p || !(stockKey(it.color, it.size) in p.stock)) throw new OrderError("Una prenda del carrito ya no está disponible.");
+    return { productId: p.id, name: p.name, color: it.color, size: it.size, qty: it.qty, price: p.price };
   });
 
   const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
@@ -57,10 +63,10 @@ export async function createOrder(input: NewOrder) {
     // Reserva el stock solo si alcanza (evita vender dos veces la última unidad).
     for (const it of items) {
       const { count } = await tx.variant.updateMany({
-        where: { productId: it.productId, size: it.size, stock: { gte: it.qty } },
+        where: { productId: it.productId, color: it.color, size: it.size, stock: { gte: it.qty } },
         data: { stock: { decrement: it.qty } },
       });
-      if (count === 0) throw new OrderError(`No queda stock de ${it.name} talle ${it.size}.`);
+      if (count === 0) throw new OrderError(`No queda stock de ${it.name} ${itemLabel(it)}.`);
     }
     return tx.order.create({
       data: {
@@ -102,7 +108,7 @@ export async function setOrderStatus(id: number, status: OrderStatus) {
     if (status === "CANCELADO" && order.stockApplied) {
       for (const it of order.items) {
         await tx.variant.updateMany({
-          where: { productId: it.productId, size: it.size },
+          where: { productId: it.productId, color: it.color, size: it.size },
           data: { stock: { increment: it.qty } },
         });
       }
@@ -110,10 +116,10 @@ export async function setOrderStatus(id: number, status: OrderStatus) {
     } else if (status !== "CANCELADO" && !order.stockApplied) {
       for (const it of order.items) {
         const { count } = await tx.variant.updateMany({
-          where: { productId: it.productId, size: it.size, stock: { gte: it.qty } },
+          where: { productId: it.productId, color: it.color, size: it.size, stock: { gte: it.qty } },
           data: { stock: { decrement: it.qty } },
         });
-        if (count === 0) throw new OrderError(`No hay stock de ${it.name} talle ${it.size} para reactivar el pedido.`);
+        if (count === 0) throw new OrderError(`No hay stock de ${it.name} ${itemLabel(it)} para reactivar el pedido.`);
       }
       stockApplied = true;
     }
@@ -126,7 +132,7 @@ async function notifyNewOrder(order: NonNullable<FullOrder>) {
   const lines = [
     `Pedido nuevo en la web de ${store.name}: ${orderCode(order.id)}`,
     `${order.name} · wa.me/${order.phone}`,
-    ...order.items.map((it) => `- ${it.qty} x ${it.name} talle ${it.size}`),
+    ...order.items.map((it) => `- ${it.qty} x ${it.name} ${itemLabel(it)}`),
     order.delivery === "envio" ? `Envío a ${order.address}, ${order.city} (${order.zip})` : "Retira en el local",
     `Pago: ${PAYMENT_LABEL[order.payment] ?? order.payment}`,
     `Total: ${formatPrice(order.total)}`,

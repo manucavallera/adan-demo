@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@/lib/db";
 import { ProductForm } from "@/components/admin/product-form";
+import { parseColors, stockKey } from "@/lib/products";
 
 // /admin/productos/nuevo crea una prenda; /admin/productos/<código> la edita.
 export default async function ProductEditPage({ params }: { params: Promise<{ id: string }> }) {
@@ -38,7 +39,9 @@ export default async function ProductEditPage({ params }: { params: Promise<{ id
                 images: product.images,
                 isNew: product.isNew,
                 active: product.active,
-                variants: product.variants.map((v) => ({ size: v.size, stock: v.stock })),
+                colors: parseColors(product.colors),
+                sizes: [...new Set(product.variants.map((v) => v.size))],
+                stock: Object.fromEntries(product.variants.map((v) => [stockKey(v.color, v.size), v.stock])),
               }
             : null
         }

@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { HandbagSimple, WhatsappLogo } from "@phosphor-icons/react";
-import { sizesOf, type Product, type Size } from "@/lib/products";
+import { sizesOf, stockOf, type Product, type Size } from "@/lib/products";
+import { useProductColor } from "./product-color";
 import { formatPrice, store } from "@/lib/config";
 import { WaLink } from "./wa-link";
 import { useCart } from "./cart";
@@ -13,19 +14,26 @@ export function ProductActions({ product }: { product: Product }) {
   const { add } = useCart();
   const [size, setSize] = useState<Size | null>(null);
   const [error, setError] = useState(false);
+  const { color } = useProductColor();
 
-  const left = size ? product.stock[size] : null;
+  // Si cambia el color y el talle elegido no tiene stock en ese color, se deselecciona.
+  useEffect(() => {
+    setSize((s) => (s && stockOf(product, s, color) > 0 ? s : null));
+  }, [color, product]);
+
+  const left = size ? stockOf(product, size, color) : null;
+  const inColor = color ? ` color ${color.toLowerCase()}` : "";
 
   const waMessage = size
-    ? `Hola ${store.name}! Quiero ${product.name} (${product.id}) en talle ${size}. ¿Está disponible?`
-    : `Hola ${store.name}! Quiero consultar por ${product.name} (${product.id}).`;
+    ? `Hola ${store.name}! Quiero ${product.name} (${product.id})${inColor} en talle ${size}. ¿Está disponible?`
+    : `Hola ${store.name}! Quiero consultar por ${product.name} (${product.id})${inColor}.`;
 
   function buy() {
     if (!size) {
       setError(true);
       return;
     }
-    add(product.id, size);
+    add(product.id, size, color);
   }
 
   return (
@@ -37,13 +45,13 @@ export function ProductActions({ product }: { product: Product }) {
         <AnimatePresence mode="wait">
           {left !== null && left > 0 && left <= 2 && (
             <motion.p
-              key={size}
+              key={`${color}-${size}`}
               initial={{ opacity: 0, y: 4 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
               className="text-sm font-medium text-accent"
             >
-              {left === 1 ? "Queda 1 en este talle" : `Quedan ${left} en este talle`}
+              {left === 1 ? "Queda 1" : `Quedan ${left}`}{color ? ` en ${color.toLowerCase()}` : ""} talle {size}
             </motion.p>
           )}
         </AnimatePresence>
@@ -51,7 +59,7 @@ export function ProductActions({ product }: { product: Product }) {
 
       <div role="radiogroup" aria-labelledby="talle-label" className="mt-3 grid grid-cols-4 gap-2">
         {sizesOf(product).map((s) => {
-          const out = product.stock[s] === 0;
+          const out = stockOf(product, s, color) === 0;
           const on = size === s;
           return (
             <button

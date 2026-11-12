@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -7,6 +6,7 @@ import { sizesOf, SIZES } from "@/lib/products";
 import { getProductBySlug, getShop } from "@/lib/shop";
 import { formatPrice, store } from "@/lib/config";
 import { ProductActions } from "@/components/product-actions";
+import { ColorPicker, ProductColorProvider, ProductGallery } from "@/components/product-color";
 import { ProductCard } from "@/components/product-card";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
@@ -33,35 +33,20 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
         </Link>
       </div>
 
+      <ProductColorProvider product={product}>
       <section className="mx-auto grid max-w-7xl gap-8 px-4 pb-20 md:grid-cols-12 md:gap-12 md:px-8">
-        <div className="relative aspect-[4/5] overflow-hidden bg-line md:col-span-7">
-          <Image
-            src={product.image}
-            alt={`${product.name}, color ${product.color.toLowerCase()}`}
-            fill
-            priority
-            sizes="(min-width: 768px) 58vw, 100vw"
-            className="object-cover"
-          />
-        </div>
-        {product.images.length > 1 && (
-          <div className="grid grid-cols-3 gap-3 md:col-span-7 md:row-start-2">
-            {product.images.slice(1).map((src, i) => (
-              <div key={src} className="relative aspect-[4/5] overflow-hidden bg-line">
-                <Image src={src} alt={`${product.name}, foto ${i + 2}`} fill sizes="(min-width: 768px) 19vw, 33vw" className="object-cover" />
-              </div>
-            ))}
-          </div>
-        )}
+        <ProductGallery product={product} />
 
         <div className="md:col-span-5 md:row-span-2 md:row-start-1 md:col-start-8 md:pt-4">
           <p className="text-sm text-muted">
-            {product.id} · {product.color}
+            {product.id}
+            {product.colors.length ? ` · ${product.colors.length} colores` : product.color && ` · ${product.color}`}
           </p>
           <h1 className="mt-2 font-display text-5xl leading-[1] uppercase md:text-6xl">{product.name}</h1>
           <p className="mt-4 text-2xl font-semibold tabular-nums">{formatPrice(product.price)}</p>
           <p className="mt-6 max-w-[48ch] leading-relaxed text-muted">{product.description}</p>
 
+          <ColorPicker product={product} />
           <ProductActions product={product} />
 
           <div className="mt-10 divide-y divide-line border-y border-line">
@@ -105,6 +90,7 @@ export default async function ProductPage({ params }: { params: Promise<{ slug: 
           </div>
         </div>
       </section>
+      </ProductColorProvider>
 
       <section className="border-t border-line bg-surface">
         <div className="mx-auto max-w-7xl px-4 py-16 md:px-8">

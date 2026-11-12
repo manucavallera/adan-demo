@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { sizesOf, totalStock, type Product } from "@/lib/products";
+import { sizeStock, sizesOf, totalStock, type Product } from "@/lib/products";
 import { formatPrice } from "@/lib/config";
 
 export function ProductCard({ product, priority }: { product: Product; priority?: boolean }) {
@@ -11,7 +11,7 @@ export function ProductCard({ product, priority }: { product: Product; priority?
       <div className="relative aspect-[4/5] overflow-hidden bg-line">
         <Image
           src={product.image}
-          alt={`${product.name}, color ${product.color.toLowerCase()}`}
+          alt={product.color ? `${product.name}, color ${product.color.toLowerCase()}` : product.name}
           fill
           priority={priority}
           sizes="(min-width: 1024px) 25vw, (min-width: 640px) 33vw, 50vw"
@@ -27,9 +27,17 @@ export function ProductCard({ product, priority }: { product: Product; priority?
       <p className="mt-1 text-sm tabular-nums text-muted md:text-base">
         {soldOut ? "Agotado" : formatPrice(product.price)}
       </p>
+      {product.colors.length > 1 && (
+        <p className="mt-2 flex items-center gap-1.5" aria-label={`Colores: ${product.color}`}>
+          {product.colors.slice(0, 6).map((c) => (
+            <span key={c.name} title={c.name} className="size-3.5 rounded-full border border-ink/15" style={{ background: c.hex }} />
+          ))}
+          {product.colors.length > 6 && <span className="text-xs text-muted">+{product.colors.length - 6}</span>}
+        </p>
+      )}
       <p className="mt-2 flex gap-2 text-xs text-muted" aria-label="Talles disponibles">
         {sizesOf(product).map((s) => (
-          <span key={s} className={product.stock[s] === 0 ? "line-through opacity-40" : ""}>
+          <span key={s} className={sizeStock(product, s) === 0 ? "line-through opacity-40" : ""}>
             {s}
           </span>
         ))}

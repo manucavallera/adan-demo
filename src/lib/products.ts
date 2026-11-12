@@ -24,6 +24,9 @@ export type Category = (typeof CATEGORY_IDS)[number];
 export const SIZES = ["S", "M", "L", "XL", "XXL"] as const;
 export type Size = string;
 
+// Un color de la prenda, con sus fotos. `hex` es el circulito que se ve en la web.
+export type ProductColor = { name: string; hex: string; images: string[] };
+
 export type Product = {
   id: string; // código que viaja en el mensaje de WhatsApp
   slug: string;
@@ -34,8 +37,9 @@ export type Product = {
   images: string[];
   color: string;
   description: string;
-  sizes: Size[]; // talles en el orden en que se muestran
-  stock: Record<Size, number>;
+  colors: ProductColor[]; // vacío = un solo color
+  sizes: Size[]; // talles en el orden en que se muestran (sin repetir)
+  stock: Record<string, number>; // clave: stockKey(color, talle)
   isNew?: boolean;
 };
 
@@ -76,6 +80,40 @@ export function sizesOf(p: Product) {
   return p.sizes;
 }
 
+// Clave del stock. Sin color es solo el talle, así las prendas de un solo color quedan como antes.
+export function stockKey(color: string, size: Size) {
+  return color ? `${color}|${size}` : size;
+}
+
+export function stockOf(p: Product, size: Size, color = "") {
+  return p.stock[stockKey(color, size)] ?? 0;
+}
+
+// Stock de un talle sumando todos los colores (para el filtro del catálogo y la tarjeta).
+export function sizeStock(p: Product, size: Size) {
+  return p.colors.length ? p.colors.reduce((sum, c) => sum + stockOf(p, size, c.name), 0) : stockOf(p, size);
+}
+
+export function colorStock(p: Product, color: string) {
+  return p.sizes.reduce((sum, s) => sum + stockOf(p, s, color), 0);
+}
+
 export function totalStock(p: Product) {
-  return p.sizes.reduce((sum, s) => sum + (p.stock[s] ?? 0), 0);
+  return Object.values(p.stock).reduce((sum, n) => sum + n, 0);
+}
+
+// Fotos de un color, o las generales si el color no tiene propias.
+export function imagesOf(p: Product, color = "") {
+  const own = p.colors.find((c) => c.name === color)?.images ?? [];
+  return own.length ? own : p.images;
+}
+
+// Lee el campo `colors` de la base (JSON) sin confiar en su forma.
+export function parseColors(raw: unknown): ProductColor[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.flatMap((c) =>
+    c && typeof c.name === "string" && c.name.trim()
+      ? [{ name: c.name.trim(), hex: typeof c.hex === "string" ? c.hex : "#888888", images: Array.isArray(c.images) ? c.images.filter((x: unknown) => typeof x === "string") : [] }]
+      : [],
+  );
 }

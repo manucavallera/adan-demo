@@ -52,7 +52,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               {order.items.map((it) => (
                 <li key={it.id} className="flex justify-between gap-3">
                   <span>
-                    {it.qty} × {it.name} <span className="text-muted">talle {it.size} · {it.productId}</span>
+                    {it.qty} × {it.name} <span className="text-muted">{it.color && `${it.color} · `}talle {it.size} · {it.productId}</span>
                   </span>
                   <span className="tabular-nums">{formatPrice(it.price * it.qty)}</span>
                 </li>

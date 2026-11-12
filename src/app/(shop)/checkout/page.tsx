@@ -6,7 +6,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { CircleNotch, Lock, WhatsappLogo } from "@phosphor-icons/react";
 import { useShop } from "@/components/shop";
-import { useCart, cartToWhatsApp } from "@/components/cart";
+import { useCart, cartToWhatsApp, lineLabel } from "@/components/cart";
+import { imagesOf } from "@/lib/products";
 import { formatPrice, shippingFor } from "@/lib/config";
 import { WaLink } from "@/components/wa-link";
 
@@ -70,7 +71,7 @@ export default function CheckoutPage() {
           ...form,
           delivery,
           payment,
-          items: lines.map((l) => ({ id: l.id, size: l.size, qty: l.qty })),
+          items: lines.map((l) => ({ id: l.id, color: l.color ?? "", size: l.size, qty: l.qty })),
         }),
       });
       const data = await res.json();
@@ -249,15 +250,15 @@ export default function CheckoutPage() {
                 const p = products.find((x) => x.id === l.id);
                 if (!p) return null;
                 return (
-                  <li key={`${l.id}-${l.size}`} className="flex gap-4">
+                  <li key={`${l.id}-${l.color ?? ""}-${l.size}`} className="flex gap-4">
                     <div className="relative h-20 w-16 shrink-0 overflow-hidden bg-line">
-                      <Image src={p.image} alt={p.name} fill sizes="64px" className="object-cover" />
+                      <Image src={imagesOf(p, l.color)[0] ?? p.image} alt={p.name} fill sizes="64px" className="object-cover" />
                     </div>
                     <div className="flex flex-1 justify-between gap-3">
                       <div>
                         <p className="font-medium leading-tight">{p.name}</p>
                         <p className="text-sm text-muted">
-                          Talle {l.size} · {l.qty} {l.qty === 1 ? "unidad" : "unidades"}
+                          <span className="inline-block first-letter:uppercase">{lineLabel(l)}</span> · {l.qty} {l.qty === 1 ? "unidad" : "unidades"}
                         </p>
                       </div>
                       <p className="tabular-nums">{formatPrice(p.price * l.qty)}</p>

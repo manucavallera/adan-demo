@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import { Minus, Plus, X, WhatsappLogo } from "@phosphor-icons/react";
-import { useCart, cartToWhatsApp } from "./cart";
+import { useCart, cartToWhatsApp, lineLabel } from "./cart";
+import { imagesOf, stockOf } from "@/lib/products";
 import { formatPrice } from "@/lib/config";
 import { useShop } from "./shop";
 import { WaLink } from "./wa-link";
@@ -79,19 +80,19 @@ export function CartDrawer() {
                     const p = products.find((x) => x.id === l.id);
                     if (!p) return null;
                     return (
-                      <li key={`${l.id}-${l.size}`} className="flex gap-4 py-4">
+                      <li key={`${l.id}-${l.color ?? ""}-${l.size}`} className="flex gap-4 py-4">
                         <div className="relative h-24 w-20 shrink-0 overflow-hidden bg-line">
-                          <Image src={p.image} alt={p.name} fill sizes="80px" className="object-cover" />
+                          <Image src={imagesOf(p, l.color)[0] ?? p.image} alt={p.name} fill sizes="80px" className="object-cover" />
                         </div>
                         <div className="flex flex-1 flex-col">
                           <p className="font-semibold leading-tight">{p.name}</p>
-                          <p className="text-sm text-muted">Talle {l.size}</p>
+                          <p className="text-sm text-muted first-letter:uppercase">{lineLabel(l)}</p>
                           <div className="mt-auto flex items-center justify-between">
                             <div className="flex items-center border border-line">
                               <button
                                 type="button"
                                 aria-label="Restar uno"
-                                onClick={() => setQty(l.id, l.size, l.qty - 1)}
+                                onClick={() => setQty(l.id, l.size, l.color ?? "", l.qty - 1)}
                                 className="flex h-9 w-9 cursor-pointer items-center justify-center"
                               >
                                 <Minus size={14} />
@@ -100,8 +101,8 @@ export function CartDrawer() {
                               <button
                                 type="button"
                                 aria-label="Sumar uno"
-                                disabled={l.qty >= p.stock[l.size]}
-                                onClick={() => setQty(l.id, l.size, l.qty + 1)}
+                                disabled={l.qty >= stockOf(p, l.size, l.color)}
+                                onClick={() => setQty(l.id, l.size, l.color ?? "", l.qty + 1)}
                                 className="flex h-9 w-9 cursor-pointer items-center justify-center disabled:cursor-not-allowed disabled:opacity-30"
                               >
                                 <Plus size={14} />

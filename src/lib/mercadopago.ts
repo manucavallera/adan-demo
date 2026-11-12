@@ -3,6 +3,7 @@
 import "server-only";
 import crypto from "node:crypto";
 import { store } from "./config";
+import { itemLabel } from "./orders";
 
 const API = "https://api.mercadopago.com";
 
@@ -31,7 +32,7 @@ type OrderForPayment = {
   name: string;
   phone: string;
   shipping: number;
-  items: { productId: string; name: string; size: string; qty: number; price: number }[];
+  items: { productId: string; name: string; color: string; size: string; qty: number; price: number }[];
 };
 
 // Devuelve la URL de Mercado Pago a la que mandar al cliente.
@@ -44,7 +45,7 @@ export async function createPaymentLink(order: OrderForPayment) {
     body: JSON.stringify({
       items: order.items.map((it) => ({
         id: it.productId,
-        title: `${it.name} (talle ${it.size})`,
+        title: `${it.name} (${itemLabel(it)})`,
         quantity: it.qty,
         unit_price: it.price,
         currency_id: "ARS",

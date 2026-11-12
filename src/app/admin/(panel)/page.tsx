@@ -75,7 +75,7 @@ export default async function AdminHome() {
             {low.map((v) => (
               <li key={v.id} className="flex items-center justify-between gap-3 py-2.5">
                 <Link href={`/admin/productos/${v.product.id}`} className="min-w-0 truncate hover:underline">
-                  {v.product.name} · talle {v.size}
+                  {v.product.name} · {v.color && `${v.color} · `}talle {v.size}
                 </Link>
                 <span className={`shrink-0 px-2 py-0.5 text-xs font-semibold ${v.stock === 0 ? "bg-danger-soft text-danger" : "bg-warn-soft text-warn"}`}>
                   {v.stock === 0 ? "Agotado" : "Queda 1"}

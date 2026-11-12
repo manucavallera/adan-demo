@@ -2,11 +2,14 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { MotionConfig } from "motion/react";
-import type { Product, Size } from "@/lib/products";
+import { stockOf, type Product, type Size } from "@/lib/products";
 import { shippingFor, store } from "@/lib/config";
 import { useShop } from "./shop";
 
-export type CartLine = { id: string; size: Size; qty: number };
+// `color` vacío = prenda de un solo color (los carritos guardados antes no lo traen).
+export type CartLine = { id: string; color?: string; size: Size; qty: number };
+
+const same = (l: CartLine, id: string, size: Size, color: string) => l.id === id && l.size === size && (l.color ?? "") === color;
 
 type CartState = {
   lines: CartLine[];
@@ -15,8 +18,8 @@ type CartState = {
   shipping: number;
   open: boolean;
   setOpen: (v: boolean) => void;
-  add: (id: string, size: Size) => void;
-  setQty: (id: string, size: Size, qty: number) => void;
+  add: (id: string, size: Size, color?: string) => void;
+  setQty: (id: string, size: Size, color: string, qty: number) => void;
   clear: () => void;
 };
 
@@ -44,28 +47,30 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     } catch {}
   }, [lines]);
 
-  const maxFor = (id: string, size: Size) =>
-    productsRef.current.find((p) => p.id === id)?.stock[size] ?? 0;
+  const maxFor = (id: string, size: Size, color: string) => {
+    const p = productsRef.current.find((x) => x.id === id);
+    return p ? stockOf(p, size, color) : 0;
+  };
 
-  const add = useCallback((id: string, size: Size) => {
+  const add = useCallback((id: string, size: Size, color = "") => {
     setLines((prev) => {
-      const found = prev.find((l) => l.id === id && l.size === size);
+      const found = prev.find((l) => same(l, id, size, color));
       if (found) {
         return prev.map((l) =>
-          l === found ? { ...l, qty: Math.min(l.qty + 1, maxFor(id, size)) } : l,
+          l === found ? { ...l, qty: Math.min(l.qty + 1, maxFor(id, size, color)) } : l,
         );
       }
-      return [...prev, { id, size, qty: 1 }];
+      return [...prev, { id, color, size, qty: 1 }];
     });
     setOpen(true);
   }, []);
 
-  const setQty = useCallback((id: string, size: Size, qty: number) => {
+  const setQty = useCallback((id: string, size: Size, color: string, qty: number) => {
     setLines((prev) =>
       qty <= 0
-        ? prev.filter((l) => !(l.id === id && l.size === size))
+        ? prev.filter((l) => !same(l, id, size, color))
         : prev.map((l) =>
-            l.id === id && l.size === size ? { ...l, qty: Math.min(qty, maxFor(id, size)) } : l,
+            same(l, id, size, color) ? { ...l, qty: Math.min(qty, maxFor(id, size, color)) } : l,
           ),
     );
   }, []);
@@ -99,9 +104,14 @@ export function cartToWhatsApp(lines: CartLine[], products: Product[], extra?: s
   const items = lines
     .map((l) => {
       const p = products.find((x) => x.id === l.id);
-      return p ? `- ${l.qty} x ${p.name} (${p.id}) talle ${l.size}` : "";
+      return p ? `- ${l.qty} x ${p.name} (${p.id}) ${lineLabel(l)}` : "";
     })
     .filter(Boolean)
     .join("\n");
   return `Hola ${store.name}! Quiero hacer este pedido:\n${items}${extra ? `\n\n${extra}` : ""}`;
+}
+
+// "Negro · talle M" o "talle M" si la prenda es de un solo color.
+export function lineLabel(l: { color?: string; size: string }) {
+  return l.color ? `${l.color} · talle ${l.size}` : `talle ${l.size}`;
 }

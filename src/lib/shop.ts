@@ -3,7 +3,7 @@
 import "server-only";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "./db";
-import type { Product } from "./products";
+import { parseColors, stockKey, type Product } from "./products";
 import type { Settings } from "./config";
 
 const TAG = "shop";
@@ -19,6 +19,7 @@ function loadRows(includeInactive: boolean) {
 }
 
 export function toProduct(p: Row): Product {
+  const colors = parseColors(p.colors);
   return {
     id: p.id,
     slug: p.slug,
@@ -27,10 +28,11 @@ export function toProduct(p: Row): Product {
     price: p.price,
     image: p.images[0] ?? "/img/sin-foto.svg",
     images: p.images,
-    color: p.color,
+    color: colors.length ? colors.map((c) => c.name).join(", ") : p.color,
     description: p.description,
-    sizes: p.variants.map((v) => v.size),
-    stock: Object.fromEntries(p.variants.map((v) => [v.size, v.stock])),
+    colors,
+    sizes: [...new Set(p.variants.map((v) => v.size))],
+    stock: Object.fromEntries(p.variants.map((v) => [stockKey(v.color, v.size), v.stock])),
     isNew: p.isNew,
   };
 }

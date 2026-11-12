@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
-import { categories } from "@/lib/products";
+import { categories, stockKey, type ProductColor } from "@/lib/products";
 import { revalidateShop } from "@/lib/shop";
 import { deleteImage } from "@/lib/uploads";
 
@@ -16,10 +16,12 @@ export type ProductInput = {
   price: number;
   color: string;
   description: string;
-  images: string[];
+  images: string[]; // fotos generales (prenda de un solo color)
   isNew: boolean;
   active: boolean;
-  variants: { size: string; stock: number }[];
+  colors: ProductColor[]; // vacío = un solo color
+  sizes: string[];
+  stock: Record<string, number>; // clave: stockKey(color, talle)
 };
 
 function slugify(s: string) {
@@ -50,24 +52,36 @@ export async function saveProduct(input: ProductInput): Promise<{ error?: string
   await requireAdmin();
   const id = input.id.trim().toUpperCase();
   const name = input.name.trim();
-  const variants = input.variants
-    .map((v) => ({ size: v.size.trim(), stock: Math.max(0, Math.floor(v.stock) || 0) }))
-    .filter((v) => v.size);
+  const sizes = input.sizes.map((s) => s.trim()).filter(Boolean);
+  const colors = input.colors
+    .map((c) => ({ name: c.name.trim(), hex: /^#[0-9a-f]{6}$/i.test(c.hex) ? c.hex : "#888888", images: c.images.slice(0, 8) }))
+    .filter((c) => c.name);
+  const colorNames = colors.length ? colors.map((c) => c.name) : [""];
+  const variants = colorNames.flatMap((color) =>
+    sizes.map((size) => ({ color, size, stock: Math.max(0, Math.floor(input.stock[stockKey(color, size)] ?? 0) || 0) })),
+  );
 
   if (!/^[A-Z0-9-]{2,20}$/.test(id)) return { error: "El código solo puede tener letras, números y guiones (ej: REM-004)." };
   if (name.length < 2) return { error: "Falta el nombre." };
   if (!categories.some((c) => c.id === input.category)) return { error: "Elegí una categoría." };
   if (!(input.price > 0)) return { error: "El precio tiene que ser mayor a 0." };
-  if (variants.length === 0) return { error: "Cargá al menos un talle." };
-  if (new Set(variants.map((v) => v.size.toLowerCase())).size !== variants.length) return { error: "Hay talles repetidos." };
+  if (sizes.length === 0) return { error: "Cargá al menos un talle." };
+  if (new Set(sizes.map((s) => s.toLowerCase())).size !== sizes.length) return { error: "Hay talles repetidos." };
+  if (input.colors.length > 0 && colors.length === 0) return { error: "Poné el nombre de cada color." };
+  if (new Set(colors.map((c) => c.name.toLowerCase())).size !== colors.length) return { error: "Hay colores repetidos." };
+  if (colors.some((c) => c.name.length > 30)) return { error: "El nombre del color es muy largo (hasta 30 letras)." };
+
+  // Con varios colores, las fotos de la prenda son las de cada color, en orden (la primera es la de portada).
+  const images = colors.length ? [...new Set(colors.flatMap((c) => c.images))].slice(0, 40) : input.images.slice(0, 8);
 
   const data = {
     name,
     category: input.category,
     price: Math.round(input.price),
-    color: input.color.trim(),
+    color: colors.length ? "" : input.color.trim(),
+    colors,
     description: input.description.trim(),
-    images: input.images.slice(0, 8),
+    images,
     isNew: input.isNew,
     active: input.active,
   };
@@ -85,16 +99,18 @@ export async function saveProduct(input: ProductInput): Promise<{ error?: string
       },
     });
   } else {
-    const before = await prisma.product.findUnique({ where: { id } });
+    const before = await prisma.product.findUnique({ where: { id }, include: { variants: true } });
     if (!before) return { error: "La prenda no existe." };
+    const keep = new Set(variants.map((v) => stockKey(v.color, v.size)));
+    const gone = before.variants.filter((v) => !keep.has(stockKey(v.color, v.size))).map((v) => v.id);
     await prisma.$transaction([
       prisma.product.update({ where: { id }, data: { ...data, slug: await uniqueSlug(slugify(name), id) } }),
-      prisma.variant.deleteMany({ where: { productId: id, size: { notIn: variants.map((v) => v.size) } } }),
+      prisma.variant.deleteMany({ where: { id: { in: gone } } }),
       ...variants.map((v, i) =>
         prisma.variant.upsert({
-          where: { productId_size: { productId: id, size: v.size } },
+          where: { productId_color_size: { productId: id, color: v.color, size: v.size } },
           update: { stock: v.stock, sort: i },
-          create: { productId: id, size: v.size, stock: v.stock, sort: i },
+          create: { productId: id, color: v.color, size: v.size, stock: v.stock, sort: i },
         }),
       ),
     ]);

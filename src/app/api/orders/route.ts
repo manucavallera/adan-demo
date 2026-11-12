@@ -39,6 +39,7 @@ export async function POST(req: Request) {
     items: Array.isArray(body.items)
       ? body.items.slice(0, 30).map((it: Record<string, unknown>) => ({
           id: str(it?.id, 40),
+          color: str(it?.color, 40),
           size: str(it?.size, 20),
           qty: Math.floor(Number(it?.qty)),
         }))

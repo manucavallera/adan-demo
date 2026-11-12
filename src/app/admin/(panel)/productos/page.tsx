@@ -1,11 +1,21 @@
 import Image from "next/image";
 import Link from "next/link";
 import { prisma } from "@/lib/db";
-import { categories } from "@/lib/products";
+import { categories, parseColors, type ProductColor } from "@/lib/products";
 import { formatPrice } from "@/lib/config";
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { Notice, PageTitle, btnPrimary } from "@/components/admin/ui";
 import { ActiveToggle, StockStepper } from "@/components/admin/stock-controls";
+
+// Agrupa el stock por color, en el orden de los colores de la prenda.
+function groupByColor<V extends { color: string }>(variants: V[], colors: ProductColor[]) {
+  const names = colors.length ? colors.map((c) => c.name) : [""];
+  return names.map((color) => ({
+    color,
+    hex: colors.find((c) => c.name === color)?.hex,
+    variants: variants.filter((v) => v.color === color),
+  }));
+}
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
   const { ok } = await searchParams;
@@ -41,9 +51,19 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
                 <p className="text-xs text-accent underline">Editar</p>
               </div>
             </Link>
-            <div className="flex flex-wrap items-center gap-2">
-              {p.variants.map((v) => (
-                <StockStepper key={v.id} id={v.id} name={p.name} size={v.size} stock={v.stock} />
+            <div className="flex flex-col gap-2 md:items-end">
+              {groupByColor(p.variants, parseColors(p.colors)).map((g) => (
+                <div key={g.color} className="flex flex-wrap items-center gap-2 md:justify-end">
+                  {g.color && (
+                    <span className="flex w-full items-center gap-1.5 text-xs font-semibold md:w-auto">
+                      <span className="size-3 rounded-full border border-ink/15" style={{ background: g.hex }} />
+                      {g.color}
+                    </span>
+                  )}
+                  {g.variants.map((v) => (
+                    <StockStepper key={v.id} id={v.id} name={`${p.name}${v.color ? ` ${v.color}` : ""}`} size={v.size} stock={v.stock} />
+                  ))}
+                </div>
               ))}
               <ActiveToggle id={p.id} active={p.active} />
             </div>

@@ -3,7 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
-import { categories, shopCategories, SIZES, type Category, type Size } from "@/lib/products";
+import { categories, shopCategories, sizeStock, SIZES, type Category, type Size } from "@/lib/products";
 import { useShop } from "./shop";
 import { ProductCard } from "./product-card";
 
@@ -27,7 +27,7 @@ export function Catalog() {
   const list = useMemo(
     () =>
       products.filter(
-        (p) => (cat === "todo" || p.category === cat) && (!size || p.stock[size] > 0),
+        (p) => (cat === "todo" || p.category === cat) && (!size || sizeStock(p, size) > 0),
       ),
     [cat, size, products],
   );
