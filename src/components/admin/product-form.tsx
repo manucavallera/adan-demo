@@ -240,7 +240,7 @@ export function ProductForm({ initial, existingCodes }: { initial: ProductInput 
 
       <div className="flex flex-wrap items-center gap-3 border-t border-line pt-6 lg:col-span-2">
         {error && (
-          <p role="alert" className="w-full border border-accent p-3 text-sm font-medium text-accent">
+          <p role="alert" className="w-full border-l-4 border-danger bg-danger-soft p-3 text-sm font-medium text-danger">
             {error}
           </p>
         )}

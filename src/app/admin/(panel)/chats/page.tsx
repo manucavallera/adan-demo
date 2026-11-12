@@ -20,13 +20,13 @@ export default async function ChatsPage() {
           const history = c.history as { role: string; text: string }[];
           const last = history[history.length - 1];
           return (
-            <li key={c.jid} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center">
+            <li key={c.jid} className={`flex flex-col gap-3 border-l-4 py-4 pl-4 sm:flex-row sm:items-center ${paused ? "border-l-danger" : "border-l-transparent"}`}>
               <Link href={`/admin/chats/${encodeURIComponent(c.jid)}`} className="min-w-0 flex-1">
                 <p className="font-medium">
                   {c.name || "Sin nombre"} {c.phone && <span className="text-sm text-muted">+{c.phone}</span>}
                 </p>
                 {paused ? (
-                  <p className="text-sm font-medium text-accent">Bot pausado{c.handoff ? `: ${c.handoff}` : ""}</p>
+                  <p className="mt-0.5 inline-block bg-danger-soft px-2 py-0.5 text-xs font-semibold text-danger">Bot pausado{c.handoff ? ` · ${c.handoff}` : ""}</p>
                 ) : (
                   <p className="truncate text-sm text-muted">{last ? `${last.role === "user" ? "" : "Bot: "}${last.text}` : "Sin mensajes"}</p>
                 )}

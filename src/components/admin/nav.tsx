@@ -2,38 +2,41 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ChatsCircle, Gear, House, Package, TShirt, type Icon } from "@phosphor-icons/react";
 
-// En celular "Chats del bot" se acorta para que entren las 5 pestañas sin deslizar.
-const LINKS: { href: string; label: string; short?: string }[] = [
-  { href: "/admin", label: "Inicio" },
-  { href: "/admin/pedidos", label: "Pedidos" },
-  { href: "/admin/productos", label: "Productos" },
-  { href: "/admin/chats", label: "Chats del bot", short: "Chats" },
-  { href: "/admin/ajustes", label: "Ajustes" },
+// En celular cada pestaña muestra el ícono arriba y una palabra abajo, así entran las 5 sin deslizar.
+const LINKS: { href: string; label: string; short?: string; icon: Icon }[] = [
+  { href: "/admin", label: "Inicio", icon: House },
+  { href: "/admin/pedidos", label: "Pedidos", icon: Package },
+  { href: "/admin/productos", label: "Productos", icon: TShirt },
+  { href: "/admin/chats", label: "Chats del bot", short: "Chats", icon: ChatsCircle },
+  { href: "/admin/ajustes", label: "Ajustes", icon: Gear },
 ];
 
 export function AdminNav() {
   const path = usePathname();
   return (
-    <nav aria-label="Panel" className="no-scrollbar mx-auto flex max-w-6xl overflow-x-auto px-1 sm:gap-1 sm:px-4 md:px-8">
+    <nav aria-label="Panel" className="mx-auto grid max-w-6xl grid-cols-5 px-1 sm:flex sm:gap-1 sm:px-4 md:px-8">
       {LINKS.map((l) => {
         const on = l.href === "/admin" ? path === "/admin" : path.startsWith(l.href);
+        const I = l.icon;
         return (
           <Link
             key={l.href}
             href={l.href}
             aria-current={on ? "page" : undefined}
-            className={`flex h-11 shrink-0 items-center border-b-2 px-2 text-[13px] font-medium sm:px-3 sm:text-sm ${
-              on ? "border-accent text-ink" : "border-transparent text-muted hover:text-ink"
+            className={`flex h-14 min-w-0 flex-col items-center justify-center gap-0.5 border-b-[3px] px-1 text-[11px] font-medium sm:h-12 sm:flex-row sm:gap-2 sm:px-3 sm:text-sm ${
+              on ? "border-accent font-semibold text-accent" : "border-transparent text-muted hover:text-ink"
             }`}
           >
+            <I size={20} weight={on ? "fill" : "regular"} aria-hidden className="shrink-0" />
             {l.short ? (
               <>
-                <span className="sm:hidden">{l.short}</span>
+                <span className="truncate sm:hidden">{l.short}</span>
                 <span className="hidden sm:inline">{l.label}</span>
               </>
             ) : (
-              l.label
+              <span className="truncate">{l.label}</span>
             )}
           </Link>
         );

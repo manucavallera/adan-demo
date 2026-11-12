@@ -42,12 +42,12 @@ export function OrderControls({ id, status, notes }: { id: number; status: strin
         {status === "PENDIENTE" && <p className="mb-3 text-sm text-muted">Cuando te llegue el pago, marcalo pagado. Las prendas ya están reservadas.</p>}
         <div className="flex flex-wrap gap-2">
           {NEXT[status].map((s) => (
-            <button key={s} type="button" disabled={pending} onClick={() => go(s)} className={`${btnGhost} ${s === "CANCELADO" ? "text-accent" : ""}`}>
+            <button key={s} type="button" disabled={pending} onClick={() => go(s)} className={`${btnGhost} ${s === "CANCELADO" ? "text-danger hover:border-danger" : s === "PAGADO" ? "border-ok text-ok" : s === "ENVIADO" ? "border-info text-info" : ""}`}>
               {ACTION_LABEL[s]}
             </button>
           ))}
         </div>
-        {error && <p role="alert" className="mt-3 text-sm font-medium text-accent">{error}</p>}
+        {error && <p role="alert" className="mt-3 text-sm font-medium text-danger">{error}</p>}
       </div>
       <div>
         <label htmlFor="notes" className="mb-1 block font-semibold">Notas internas</label>

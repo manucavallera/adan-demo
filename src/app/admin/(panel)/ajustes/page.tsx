@@ -3,7 +3,8 @@ import { redirect } from "next/navigation";
 import { requireAdmin } from "@/lib/admin-auth";
 import { prisma } from "@/lib/db";
 import { revalidateShop } from "@/lib/shop";
-import { Field, PageTitle, btnPrimary, input } from "@/components/admin/ui";
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
+import { Field, Notice, PageTitle, btnPrimary, input } from "@/components/admin/ui";
 
 const TEXT = ["whatsapp", "address", "city", "hours", "installments", "transferAlias", "transferCbu", "transferHolder", "legalName", "cuit", "email"] as const;
 const NUM = ["shippingCost", "freeShippingFrom", "transferDiscount"] as const;
@@ -38,7 +39,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   return (
     <>
       <PageTitle title="Ajustes" />
-      {ok && <p className="mb-4 border border-emerald-600 p-3 text-sm">Guardado. La web y el bot ya usan los datos nuevos.</p>}
+      {ok && <Notice tone="ok" icon={<CheckCircle size={20} weight="fill" />} className="mb-4">Guardado. La web y el bot ya usan los datos nuevos.</Notice>}
       <form action={save} className="grid max-w-3xl gap-10">
         <fieldset className="grid gap-5 sm:grid-cols-2">
           <legend className="mb-4 text-lg font-semibold">Local y contacto</legend>

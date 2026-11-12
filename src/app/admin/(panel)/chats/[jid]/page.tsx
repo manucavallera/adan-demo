@@ -23,7 +23,7 @@ export default async function ChatPage({ params }: { params: Promise<{ jid: stri
           <p className="text-sm text-muted">
             {chat.phone && `+${chat.phone} · `}último mensaje {dateAR(chat.lastAt)}
           </p>
-          {paused && <p className="mt-1 text-sm font-medium text-accent">Bot pausado{chat.handoff ? `: ${chat.handoff}` : ""}</p>}
+          {paused && <p className="mt-1 inline-block bg-danger-soft px-2 py-0.5 text-sm font-semibold text-danger">Bot pausado{chat.handoff ? `: ${chat.handoff}` : ""}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           {chat.phone && (

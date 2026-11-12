@@ -3,7 +3,8 @@ import Link from "next/link";
 import { prisma } from "@/lib/db";
 import { categories } from "@/lib/products";
 import { formatPrice } from "@/lib/config";
-import { PageTitle, btnPrimary } from "@/components/admin/ui";
+import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
+import { Notice, PageTitle, btnPrimary } from "@/components/admin/ui";
 import { ActiveToggle, StockStepper } from "@/components/admin/stock-controls";
 
 export default async function ProductsPage({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
@@ -21,13 +22,13 @@ export default async function ProductsPage({ searchParams }: { searchParams: Pro
           + Nueva prenda
         </Link>
       </PageTitle>
-      {ok && <p className="mb-4 border border-emerald-600 p-3 text-sm">Guardado. Ya se ve en la web y el bot lo sabe.</p>}
+      {ok && <Notice tone="ok" icon={<CheckCircle size={20} weight="fill" />} className="mb-4">Guardado. Ya se ve en la web y el bot lo sabe.</Notice>}
       <p className="mb-4 text-sm text-muted">
         Tocá + o − para cambiar el stock. Con el botón de estado pausás una prenda: no se ve en la web y el bot no la ofrece.
       </p>
       <ul className="divide-y divide-line border-y border-line">
         {products.map((p) => (
-          <li key={p.id} className="flex flex-col gap-3 py-4 md:flex-row md:items-center">
+          <li key={p.id} className={`flex flex-col gap-3 py-4 md:flex-row md:items-center ${p.active ? "" : "opacity-60"}`}>
             <Link href={`/admin/productos/${p.id}`} className="flex min-w-0 flex-1 items-center gap-4">
               <div className="relative h-20 w-16 shrink-0 overflow-hidden bg-line">
                 <Image src={p.images[0] ?? "/img/sin-foto.svg"} alt="" fill sizes="64px" className="object-cover" />

@@ -4,7 +4,7 @@ import { prisma } from "@/lib/db";
 import { formatPrice, waLink } from "@/lib/config";
 import { orderCode, PAYMENT_LABEL, withdrawalCode } from "@/lib/orders";
 import { markWithdrawalHandled } from "./actions";
-import { PageTitle, STATUS_LABEL, StatusBadge, dateAR } from "@/components/admin/ui";
+import { PageTitle, STATUS_BAR, STATUS_LABEL, StatusBadge, dateAR } from "@/components/admin/ui";
 
 const FILTERS: { id: string; label: string; where: OrderStatus[] | null }[] = [
   { id: "abiertos", label: "Para atender", where: ["PENDIENTE", "PAGADO"] },
@@ -29,12 +29,12 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
     <>
       <PageTitle title="Pedidos" />
       {withdrawals.length > 0 && (
-        <section className="mb-8 border border-accent p-5">
-          <h2 className="font-semibold">Arrepentimientos para atender ({withdrawals.length})</h2>
+        <section className="mb-8 border-l-4 border-danger bg-danger-soft p-5">
+          <h2 className="font-semibold text-danger">Arrepentimientos para atender ({withdrawals.length})</h2>
           <p className="mt-1 text-sm text-muted">
             El cliente tiene derecho a devolver la compra sin costo. Escribile, coordiná la devolución y reintegrale el total.
           </p>
-          <ul className="mt-4 divide-y divide-line">
+          <ul className="mt-4 divide-y divide-danger/20">
             {withdrawals.map((w) => (
               <li key={w.id} className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
@@ -55,7 +55,7 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
                     WhatsApp
                   </a>
                   <form action={markWithdrawalHandled.bind(null, w.id)}>
-                    <button type="submit" className="h-10 cursor-pointer border border-line px-3 text-sm hover:border-ink">
+                    <button type="submit" className="h-10 cursor-pointer border border-ink/30 bg-surface px-3 text-sm hover:border-ink">
                       Ya lo atendí
                     </button>
                   </form>
@@ -70,16 +70,16 @@ export default async function OrdersPage({ searchParams }: { searchParams: Promi
           <Link
             key={f.id}
             href={`/admin/pedidos?ver=${f.id}`}
-            className={`flex h-10 shrink-0 items-center border px-4 text-sm ${f.id === filter.id ? "border-ink bg-ink text-canvas" : "border-line"}`}
+            className={`flex h-10 shrink-0 items-center border px-4 text-sm ${f.id === filter.id ? "border-accent bg-accent text-on-accent" : "border-line hover:border-ink"}`}
           >
             {f.label}
           </Link>
         ))}
       </div>
-      <ul className="divide-y divide-line border-y border-line">
+      <ul className="space-y-2">
         {orders.map((o) => (
           <li key={o.id}>
-            <Link href={`/admin/pedidos/${o.id}`} className="flex flex-col gap-1 py-4 hover:bg-surface sm:flex-row sm:items-center sm:gap-4">
+            <Link href={`/admin/pedidos/${o.id}`} className={`flex flex-col gap-1 border-l-4 bg-surface px-4 py-3 hover:bg-line/40 sm:flex-row sm:items-center sm:gap-4 ${STATUS_BAR[o.status] ?? "border-l-line"}`}>
               <div className="flex items-center gap-3 sm:w-64">
                 <strong className="tabular-nums">{orderCode(o.id)}</strong>
                 <StatusBadge status={o.status} />

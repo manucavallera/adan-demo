@@ -28,12 +28,38 @@ export function Field({ label, hint, htmlFor, children }: { label: string; hint?
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  PENDIENTE: "bg-amber-100 text-amber-900 dark:bg-amber-900/40 dark:text-amber-200",
-  PAGADO: "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200",
-  ENVIADO: "bg-sky-100 text-sky-900 dark:bg-sky-900/40 dark:text-sky-200",
-  ENTREGADO: "bg-line text-ink",
-  CANCELADO: "bg-red-100 text-red-900 dark:bg-red-900/40 dark:text-red-200",
+  PENDIENTE: "bg-warn-soft text-warn",
+  PAGADO: "bg-ok-soft text-ok",
+  ENVIADO: "bg-info-soft text-info",
+  ENTREGADO: "bg-line text-muted",
+  CANCELADO: "bg-danger-soft text-danger",
 };
+
+// Raya de color a la izquierda de cada pedido en la lista.
+export const STATUS_BAR: Record<string, string> = {
+  PENDIENTE: "border-l-warn",
+  PAGADO: "border-l-ok",
+  ENVIADO: "border-l-info",
+  ENTREGADO: "border-l-line",
+  CANCELADO: "border-l-danger",
+};
+
+const NOTICE_STYLE = {
+  ok: "border-ok bg-ok-soft text-ok",
+  warn: "border-warn bg-warn-soft text-warn",
+  danger: "border-danger bg-danger-soft text-danger",
+  info: "border-info bg-info-soft text-info",
+} as const;
+
+// Aviso en franja de color: verde = listo, ámbar = falta algo, rojo = urgente.
+export function Notice({ tone, icon, children, className = "" }: { tone: keyof typeof NOTICE_STYLE; icon?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <div role={tone === "danger" ? "alert" : "status"} className={`flex items-start gap-3 border-l-4 p-3 text-sm ${NOTICE_STYLE[tone]} ${className}`}>
+      {icon && <span className="mt-0.5 shrink-0">{icon}</span>}
+      <div className="min-w-0 flex-1 text-ink">{children}</div>
+    </div>
+  );
+}
 
 export const STATUS_LABEL: Record<string, string> = {
   PENDIENTE: "Pendiente de pago",
@@ -44,7 +70,7 @@ export const STATUS_LABEL: Record<string, string> = {
 };
 
 export function StatusBadge({ status }: { status: string }) {
-  return <span className={`inline-block px-2 py-0.5 text-xs font-semibold ${STATUS_STYLE[status] ?? ""}`}>{STATUS_LABEL[status] ?? status}</span>;
+  return <span className={`inline-block whitespace-nowrap px-2 py-0.5 text-xs font-semibold ${STATUS_STYLE[status] ?? ""}`}>{STATUS_LABEL[status] ?? status}</span>;
 }
 
 export function dateAR(d: Date) {

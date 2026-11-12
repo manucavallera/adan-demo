@@ -10,6 +10,15 @@
   --line: #d9cfc4;
   --accent: #7a4a2a;
   --on-accent: #f8f5f1;
+  /* Colores con significado (panel): verde = listo, ámbar = espera, rojo = urgente, azul = en camino. */
+  --ok: #2f6b3f;
+  --ok-soft: #e1eddf;
+  --warn: #8a5a00;
+  --warn-soft: #f6e7c4;
+  --danger: #a3291f;
+  --danger-soft: #f6dcd6;
+  --info: #23597a;
+  --info-soft: #dbe8ef;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -21,6 +30,14 @@
     --line: #3a322c;
     --accent: #c08a5b;
     --on-accent: #14110f;
+    --ok: #8fcf9c;
+    --ok-soft: #1c2b1f;
+    --warn: #e8bb62;
+    --warn-soft: #2e2414;
+    --danger: #f0968a;
+    --danger-soft: #34191a;
+    --info: #8cc3e3;
+    --info-soft: #172531;
   }
 }
 
@@ -32,6 +49,14 @@
   --color-line: var(--line);
   --color-accent: var(--accent);
   --color-on-accent: var(--on-accent);
+  --color-ok: var(--ok);
+  --color-ok-soft: var(--ok-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
   --font-display: var(--font-anton);
   --font-sans: var(--font-epilogue);
 }

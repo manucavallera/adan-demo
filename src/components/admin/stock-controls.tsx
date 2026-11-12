@@ -13,14 +13,15 @@ export function StockStepper({ id, name, size, stock }: { id: number; name: stri
       setValue(Math.max(0, value + delta));
       await adjustStock(id, delta);
     });
-  const low = value <= 1;
+  // Verde = hay stock, ámbar = queda 1, rojo = agotado.
+  const tone = value === 0 ? "border-danger bg-danger-soft text-danger" : value === 1 ? "border-warn bg-warn-soft text-warn" : "border-line";
   return (
-    <div className={`flex items-center border ${low ? "border-accent" : "border-line"}`} aria-busy={pending}>
+    <div className={`flex items-center border ${tone}`} aria-busy={pending}>
       <button type="button" onClick={() => change(-1)} disabled={value === 0} aria-label={`Restar uno a ${name} talle ${size}`} className="flex h-10 w-9 cursor-pointer items-center justify-center disabled:opacity-30">
         <Minus size={14} />
       </button>
       <span className="min-w-14 text-center text-sm tabular-nums">
-        <span className="text-muted">{size}</span> <strong className={value === 0 ? "text-accent" : ""}>{value}</strong>
+        <span className="opacity-70">{size}</span> <strong>{value}</strong>
       </span>
       <button type="button" onClick={() => change(1)} aria-label={`Sumar uno a ${name} talle ${size}`} className="flex h-10 w-9 cursor-pointer items-center justify-center">
         <Plus size={14} />
@@ -42,7 +43,7 @@ export function ActiveToggle({ id, active }: { id: string; active: boolean }) {
           await setActive(id, !on);
         })
       }
-      className={`h-9 cursor-pointer px-3 text-xs font-semibold ${on ? "bg-emerald-100 text-emerald-900 dark:bg-emerald-900/40 dark:text-emerald-200" : "bg-line text-muted"}`}
+      className={`h-9 cursor-pointer px-3 text-xs font-semibold ${on ? "bg-ok-soft text-ok" : "bg-line text-muted"}`}
     >
       {on ? "Visible" : "Pausada"}
     </button>
