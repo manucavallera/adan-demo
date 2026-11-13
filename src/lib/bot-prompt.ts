@@ -35,10 +35,13 @@ export function buildPrompt(
     })
     .join("\n");
   const place = [s.address, s.city].filter(Boolean).join(", ");
-  const shipping =
-    s.freeShippingFrom > 0
-      ? `El envío cuesta ${formatPrice(s.shippingCost)} y es gratis desde ${formatPrice(s.freeShippingFrom)}.`
-      : `El envío cuesta ${formatPrice(s.shippingCost)}.`;
+  const free = s.freeShippingFrom > 0 ? ` Es gratis desde ${formatPrice(s.freeShippingFrom)} (no aplica a las zonas a coordinar).` : "";
+  const zones = s.shippingZones
+    .map((z) => `${z.name}: ${z.price === null ? "a coordinar (no des precio, lo pasa el dueño)" : formatPrice(z.price)}`)
+    .join("; ");
+  const shipping = s.shippingZones.length
+    ? `El envío depende de la zona. ${zones}.${free} Preguntá la ciudad para saber la zona; si no está en la lista, pasalo al dueño.`
+    : `El envío cuesta ${formatPrice(s.shippingCost)}.${free}`;
   const discount =
     s.transferDiscount > 0
       ? `Si piden descuento, podés ofrecer solo el ${s.transferDiscount}% pagando por transferencia. Si insisten, lo pasás al dueño.`

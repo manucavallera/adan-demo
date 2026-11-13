@@ -4,7 +4,7 @@ import "server-only";
 import { revalidateTag, unstable_cache } from "next/cache";
 import { prisma } from "./db";
 import { parseColors, stockKey, type Product } from "./products";
-import type { Settings } from "./config";
+import { parseZones, type Settings } from "./config";
 
 const TAG = "shop";
 
@@ -46,6 +46,7 @@ const DEFAULT_SETTINGS: Settings = {
   installments: "",
   shippingCost: 0,
   freeShippingFrom: 0,
+  shippingZones: [],
   transferDiscount: 0,
   transferAlias: "",
   transferCbu: "",
@@ -64,8 +65,8 @@ export const getShop = unstable_cache(
     let settings = DEFAULT_SETTINGS;
     if (s) {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { id, ignoredNumbers, ...rest } = s; // la lista de ignorados no va a la web
-      settings = rest;
+      const { id, ignoredNumbers, shippingZones, ...rest } = s; // la lista de ignorados no va a la web
+      settings = { ...rest, shippingZones: parseZones(shippingZones) };
     }
     return { products: rows.map(toProduct), settings };
   },

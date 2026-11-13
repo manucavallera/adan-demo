@@ -5,6 +5,8 @@ import { prisma } from "@/lib/db";
 import { revalidateShop } from "@/lib/shop";
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { Field, Notice, PageTitle, btnPrimary, input } from "@/components/admin/ui";
+import { ZonesEditor } from "@/components/admin/zones-editor";
+import { parseZones } from "@/lib/config";
 
 const TEXT = ["whatsapp", "address", "city", "hours", "installments", "transferAlias", "transferCbu", "transferHolder", "legalName", "cuit", "email"] as const;
 const NUM = ["shippingCost", "freeShippingFrom", "transferDiscount"] as const;
@@ -12,7 +14,7 @@ const NUM = ["shippingCost", "freeShippingFrom", "transferDiscount"] as const;
 async function save(formData: FormData) {
   "use server";
   await requireAdmin();
-  const data: Record<string, string | number> = {};
+  const data: Record<string, string | number | object> = {};
   for (const k of TEXT) data[k] = String(formData.get(k) ?? "").trim().slice(0, 200);
   for (const k of NUM) data[k] = Math.max(0, Math.round(Number(formData.get(k)) || 0));
   data.whatsapp = String(data.whatsapp).replace(/\D/g, "");
@@ -23,6 +25,11 @@ async function save(formData: FormData) {
     .slice(0, 300)
     .join("\n");
   data.transferDiscount = Math.min(50, Number(data.transferDiscount));
+  let zones: unknown = [];
+  try {
+    zones = JSON.parse(String(formData.get("shippingZones") ?? "[]"));
+  } catch {}
+  data.shippingZones = parseZones(zones);
   await prisma.settings.upsert({ where: { id: 1 }, update: data, create: { id: 1, ...data } });
   revalidateShop();
   revalidatePath("/admin/ajustes");
@@ -32,7 +39,7 @@ async function save(formData: FormData) {
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ ok?: string }> }) {
   const { ok } = await searchParams;
   const s = (await prisma.settings.findUnique({ where: { id: 1 } })) ?? {
-    whatsapp: "", address: "", city: "", hours: "", installments: "", shippingCost: 0, freeShippingFrom: 0,
+    whatsapp: "", address: "", city: "", hours: "", installments: "", shippingCost: 0, freeShippingFrom: 0, shippingZones: [],
     transferDiscount: 0, transferAlias: "", transferCbu: "", transferHolder: "", legalName: "", cuit: "", email: "", ignoredNumbers: "",
   };
 
@@ -59,12 +66,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
 
         <fieldset className="grid gap-5 sm:grid-cols-2">
           <legend className="mb-4 text-lg font-semibold">Envíos</legend>
-          <Field label="Costo de envío" htmlFor="shippingCost" hint="En pesos.">
+          <Field label="Costo de envío" htmlFor="shippingCost" hint="En pesos. Se usa solo si no cargás zonas.">
             <input id="shippingCost" name="shippingCost" type="number" min={0} defaultValue={s.shippingCost} className={input} />
           </Field>
-          <Field label="Envío gratis desde" htmlFor="freeShippingFrom" hint="En pesos. 0 = no hay envío gratis.">
+          <Field label="Envío gratis desde" htmlFor="freeShippingFrom" hint="En pesos. 0 = no hay envío gratis. Vale para todas las zonas con precio.">
             <input id="freeShippingFrom" name="freeShippingFrom" type="number" min={0} defaultValue={s.freeShippingFrom} className={input} />
           </Field>
+          <ZonesEditor initial={parseZones(s.shippingZones)} />
         </fieldset>
 
         <fieldset className="grid gap-5 sm:grid-cols-2">

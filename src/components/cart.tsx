@@ -15,7 +15,7 @@ type CartState = {
   lines: CartLine[];
   count: number;
   subtotal: number;
-  shipping: number;
+  shipping: number | null; // null = depende de la zona
   open: boolean;
   setOpen: (v: boolean) => void;
   add: (id: string, size: Size, color?: string) => void;

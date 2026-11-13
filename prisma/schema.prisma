@@ -63,6 +63,8 @@ model Order {
   address      String      @default("")
   city         String      @default("")
   zip          String      @default("")
+  shippingZone String      @default("") // zona elegida, vacío si no hay zonas
+  shippingTbd  Boolean     @default(false) // envío "a coordinar": no está sumado al total
   payment      String // mercadopago, transferencia o efectivo
   notes        String      @default("")
   subtotal     Int
@@ -99,6 +101,8 @@ model Settings {
   installments     String @default("")
   shippingCost     Int    @default(0)
   freeShippingFrom Int    @default(0) // 0 = sin envío gratis
+  // Zonas de envío: [{ name, price }]. price null = "a coordinar". Vacío = un solo costo (shippingCost).
+  shippingZones    Json   @default("[]")
   transferDiscount Int    @default(0) // porcentaje
   transferAlias    String @default("")
   transferCbu      String @default("")

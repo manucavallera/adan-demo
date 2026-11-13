@@ -35,6 +35,7 @@ export async function POST(req: Request) {
     address: str(body.address),
     city: str(body.city, 80),
     zip: str(body.zip, 8),
+    zone: delivery === "envio" ? str(body.zone, 60) : "",
     payment: payment ?? "transferencia",
     items: Array.isArray(body.items)
       ? body.items.slice(0, 30).map((it: Record<string, unknown>) => ({

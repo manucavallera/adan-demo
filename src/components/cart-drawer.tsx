@@ -126,8 +126,11 @@ export function CartDrawer() {
                     <span>Subtotal</span>
                     <span className="tabular-nums">{formatPrice(subtotal)}</span>
                   </div>
-                  {shipping > 0 && (
+                  {shipping !== null && shipping > 0 && (
                     <p className="text-sm text-muted">Envío: {formatPrice(shipping)} (gratis si retirás)</p>
+                  )}
+                  {shipping === null && (
+                    <p className="text-sm text-muted">El envío depende de tu zona. Lo elegís al finalizar la compra.</p>
                   )}
                   <Link
                     href="/checkout"

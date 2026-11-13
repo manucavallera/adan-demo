@@ -8,12 +8,12 @@ import { CircleNotch, Lock, WhatsappLogo } from "@phosphor-icons/react";
 import { useShop } from "@/components/shop";
 import { useCart, cartToWhatsApp, lineLabel } from "@/components/cart";
 import { imagesOf } from "@/lib/products";
-import { formatPrice, shippingFor } from "@/lib/config";
+import { formatPrice, shippingFor, zonePriceLabel } from "@/lib/config";
 import { WaLink } from "@/components/wa-link";
 
 type Delivery = "envio" | "retiro";
 type Payment = "mercadopago" | "transferencia" | "efectivo";
-type Errors = Partial<Record<"name" | "phone" | "address" | "city" | "zip", string>>;
+type Errors = Partial<Record<"name" | "phone" | "zone" | "address" | "city" | "zip", string>>;
 
 const input =
   "h-12 w-full border border-line bg-surface px-4 text-base text-ink outline-none transition-colors placeholder:text-muted focus:border-ink focus-visible:ring-2 focus-visible:ring-accent";
@@ -28,8 +28,14 @@ export default function CheckoutPage() {
   const [form, setForm] = useState({ name: "", phone: "", address: "", city: "", zip: "" });
   const [errors, setErrors] = useState<Errors>({});
   const [paying, setPaying] = useState(false);
+  const [zone, setZone] = useState("");
 
-  const shipping = delivery === "retiro" ? 0 : shippingFor(subtotal, settings);
+  // Con zonas cargadas en Ajustes, el cliente elige la suya. "A coordinar" no suma al total.
+  const zones = settings.shippingZones;
+  const hasZones = zones.length > 0;
+  const cost = delivery === "retiro" ? 0 : shippingFor(subtotal, settings, zone);
+  const shipping = cost ?? 0;
+  const tbd = delivery === "envio" && hasZones && zone !== "" && cost === null;
   const discount =
     payment === "transferencia" && settings.transferDiscount > 0
       ? Math.round((subtotal * settings.transferDiscount) / 100)
@@ -46,6 +52,7 @@ export default function CheckoutPage() {
     if (form.name.trim().length < 3) e.name = "Escribí tu nombre y apellido.";
     if (form.phone.replace(/\D/g, "").length < 8) e.phone = "Revisá el número, te avisamos por acá.";
     if (delivery === "envio") {
+      if (hasZones && !zone) e.zone = "Elegí tu zona.";
       if (!form.address.trim()) e.address = "Falta la dirección.";
       if (!form.city.trim()) e.city = "Falta la ciudad.";
       if (!/^\d{4}$/.test(form.zip)) e.zip = "Son 4 números.";
@@ -70,6 +77,7 @@ export default function CheckoutPage() {
         body: JSON.stringify({
           ...form,
           delivery,
+          zone: delivery === "envio" ? zone : "",
           payment,
           items: lines.map((l) => ({ id: l.id, color: l.color ?? "", size: l.size, qty: l.qty })),
         }),
@@ -89,7 +97,7 @@ export default function CheckoutPage() {
     form.name && `Nombre: ${form.name}`,
     delivery === "retiro"
       ? "Entrega: retiro en el local"
-      : form.address && `Envío a: ${form.address}, ${form.city} (${form.zip})`,
+      : form.address && `Envío a: ${form.address}, ${form.city} (${form.zip})${zone ? ` · zona ${zone}` : ""}`,
   ]
     .filter(Boolean)
     .join("\n");
@@ -127,7 +135,7 @@ export default function CheckoutPage() {
             <div className="grid gap-3 sm:grid-cols-2">
               {(
                 [
-                  ["envio", "Envío a domicilio", shippingFor(subtotal, settings) === 0 ? "Gratis" : formatPrice(settings.shippingCost)],
+                  ["envio", "Envío a domicilio", hasZones ? "Según tu zona" : shippingFor(subtotal, settings) === 0 ? "Gratis" : formatPrice(settings.shippingCost)],
                   ["retiro", "Retiro en el local", settings.address ? `Gratis, en ${settings.address}` : "Gratis"],
                 ] as const
               ).map(([value, title, sub]) => (
@@ -156,6 +164,42 @@ export default function CheckoutPage() {
                 </label>
               ))}
             </div>
+
+            {delivery === "envio" && hasZones && (
+              <div className="mt-6">
+                <p id="zone-label" className="text-sm font-semibold">¿A dónde lo mandamos?</p>
+                <div id="zone" tabIndex={-1} role="radiogroup" aria-labelledby="zone-label" aria-describedby="zone-err" className="mt-2 grid gap-2 sm:grid-cols-2">
+                  {zones.map((z) => (
+                    <label
+                      key={z.name}
+                      className={`flex cursor-pointer items-center justify-between gap-3 border px-4 py-3 transition-colors ${
+                        zone === z.name ? "border-ink" : "border-line hover:border-muted"
+                      }`}
+                    >
+                      <span className="flex items-center gap-3">
+                        <input
+                          type="radio"
+                          name="zone"
+                          value={z.name}
+                          checked={zone === z.name}
+                          onChange={() => {
+                            setZone(z.name);
+                            setErrors((er) => ({ ...er, zone: undefined }));
+                          }}
+                          className="accent-[var(--accent)]"
+                        />
+                        <span className="font-medium">{z.name}</span>
+                      </span>
+                      <span className="text-sm text-muted tabular-nums">{zonePriceLabel(subtotal, settings, z)}</span>
+                    </label>
+                  ))}
+                </div>
+                {tbd && <p className="mt-2 text-sm text-muted">El costo del envío te lo pasamos por WhatsApp. Se paga aparte.</p>}
+                <p id="zone-err" role={errors.zone ? "alert" : undefined} className="mt-2 text-sm font-medium text-accent empty:hidden">
+                  {errors.zone}
+                </p>
+              </div>
+            )}
 
             {delivery === "envio" && (
               <div className="mt-6 grid gap-5 sm:grid-cols-6">
@@ -280,7 +324,9 @@ export default function CheckoutPage() {
               )}
               <div className="flex justify-between">
                 <dt className="text-muted">Envío</dt>
-                <dd className="tabular-nums">{shipping === 0 ? "Gratis" : formatPrice(shipping)}</dd>
+                <dd className="tabular-nums">
+                  {delivery === "envio" && hasZones && !zone ? "Elegí tu zona" : tbd ? "A coordinar" : shipping === 0 ? "Gratis" : formatPrice(shipping)}
+                </dd>
               </div>
               <div className="flex justify-between pt-2 text-lg font-semibold">
                 <dt>Total</dt>

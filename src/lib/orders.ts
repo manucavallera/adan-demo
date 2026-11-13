@@ -15,6 +15,7 @@ export type NewOrder = {
   address: string;
   city: string;
   zip: string;
+  zone: string; // zona de envío elegida (vacío si no hay zonas o retira)
   payment: "mercadopago" | "transferencia" | "efectivo";
   items: { id: string; color: string; size: string; qty: number }[];
 };
@@ -52,7 +53,13 @@ export async function createOrder(input: NewOrder) {
   });
 
   const subtotal = items.reduce((s, it) => s + it.price * it.qty, 0);
-  const shipping = input.delivery === "retiro" ? 0 : shippingFor(subtotal, settings);
+  // Con zonas cargadas, la zona tiene que existir. "A coordinar" deja el envío afuera del total.
+  const zones = settings.shippingZones;
+  const zone = input.delivery === "envio" && zones.length ? zones.find((z) => z.name === input.zone) : undefined;
+  if (input.delivery === "envio" && zones.length && !zone) throw new OrderError("Elegí la zona de envío.");
+  const cost = input.delivery === "retiro" ? 0 : shippingFor(subtotal, settings, zone?.name);
+  const shippingTbd = cost === null;
+  const shipping = cost ?? 0;
   const discount =
     input.payment === "transferencia" && settings.transferDiscount > 0
       ? Math.round((subtotal * settings.transferDiscount) / 100)
@@ -76,6 +83,8 @@ export async function createOrder(input: NewOrder) {
         address: input.delivery === "envio" ? input.address : "",
         city: input.delivery === "envio" ? input.city : "",
         zip: input.delivery === "envio" ? input.zip : "",
+        shippingZone: zone?.name ?? "",
+        shippingTbd,
         payment: input.payment,
         subtotal,
         shipping,
@@ -134,6 +143,7 @@ async function notifyNewOrder(order: NonNullable<FullOrder>) {
     `${order.name} · wa.me/${order.phone}`,
     ...order.items.map((it) => `- ${it.qty} x ${it.name} ${itemLabel(it)}`),
     order.delivery === "envio" ? `Envío a ${order.address}, ${order.city} (${order.zip})` : "Retira en el local",
+    ...(order.shippingZone ? [`Zona: ${order.shippingZone}${order.shippingTbd ? " (envío a coordinar, no está en el total)" : ""}`] : []),
     `Pago: ${PAYMENT_LABEL[order.payment] ?? order.payment}`,
     `Total: ${formatPrice(order.total)}`,
   ];

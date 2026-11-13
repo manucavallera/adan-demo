@@ -39,6 +39,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
           <div className="border border-line bg-surface p-5">
             <h2 className="mb-3 font-semibold">Entrega y pago</h2>
             <p>{order.delivery === "envio" ? `Envío a ${order.address}, ${order.city} (CP ${order.zip})` : "Retira en el local"}</p>
+            {order.shippingZone && <p className="text-muted">Zona: {order.shippingZone}{order.shippingTbd && " · envío a coordinar"}</p>}
             <p className="text-muted">Pago: {PAYMENT_LABEL[order.payment] ?? order.payment}</p>
             {order.mpPaymentId && <p className="text-muted">Pago de Mercado Pago n.º {order.mpPaymentId}</p>}
             <p className="text-muted">Hecho el {dateAR(order.createdAt)}</p>
@@ -63,7 +64,7 @@ export default async function OrderPage({ params }: { params: Promise<{ id: stri
               {order.discount > 0 && (
                 <div className="flex justify-between"><dt className="text-muted">Descuento</dt><dd className="tabular-nums">−{formatPrice(order.discount)}</dd></div>
               )}
-              <div className="flex justify-between"><dt className="text-muted">Envío</dt><dd className="tabular-nums">{order.shipping ? formatPrice(order.shipping) : "Gratis"}</dd></div>
+              <div className="flex justify-between"><dt className="text-muted">Envío</dt><dd className="tabular-nums">{order.shippingTbd ? "A coordinar (no está en el total)" : order.shipping ? formatPrice(order.shipping) : "Gratis"}</dd></div>
               <div className="flex justify-between pt-1 text-base font-semibold"><dt>Total</dt><dd className="tabular-nums">{formatPrice(order.total)}</dd></div>
             </dl>
           </div>
