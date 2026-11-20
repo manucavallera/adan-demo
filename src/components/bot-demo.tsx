@@ -19,6 +19,7 @@ import {
 import { sizesOf, type Product } from "@/lib/products";
 import { useShop } from "./shop";
 import { formatPrice, store, waLink } from "@/lib/config";
+import { toJpeg } from "@/lib/to-jpeg";
 
 // Demo del asistente de WhatsApp. Se ve como un chat y por detrás usa la IA real (/api/chat).
 // La pestaña "Vista del dueño" muestra lo que le llegaría al dueño: ficha del pedido y avisos.
@@ -83,21 +84,6 @@ const DAY_BASE = { ventas: 3, monto: 104_700, consultas: 14, pasados: 1 };
 
 const EMPTY_ORDER: Order = { cliente: "", codigo: "", producto: "", talle: "", cantidad: "", entrega: "", direccion: "", pago: "" };
 const now = () => new Date().toLocaleTimeString("es-AR", { hour: "2-digit", minute: "2-digit" });
-
-// Achica la foto antes de mandarla: más rápida y más barata.
-async function toJpeg(src: string | File, max = 800): Promise<string> {
-  const url = typeof src === "string" ? src : URL.createObjectURL(src);
-  const img = document.createElement("img");
-  img.src = url;
-  await img.decode();
-  const scale = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.round(img.naturalWidth * scale);
-  canvas.height = Math.round(img.naturalHeight * scale);
-  canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
-  if (typeof src !== "string") URL.revokeObjectURL(url);
-  return canvas.toDataURL("image/jpeg", 0.8);
-}
 
 export function openBot(text?: string) {
   window.dispatchEvent(new CustomEvent("open-bot", { detail: text }));

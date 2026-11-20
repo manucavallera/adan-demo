@@ -1,10 +1,13 @@
 "use client";
 
 import Image from "next/image";
-import { useState, useTransition } from "react";
-import { ArrowLeft, ArrowRight, CircleNotch, Plus, Trash, UploadSimple } from "@phosphor-icons/react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { ArrowLeft, ArrowRight, CircleNotch, Microphone, Plus, Sparkle, Stop, Trash, UploadSimple } from "@phosphor-icons/react";
 import { categories, categoryGroups, discountOf, stockKey } from "@/lib/products";
 import { deleteProduct, saveProduct, type ProductInput } from "@/app/admin/(panel)/productos/actions";
+import { fillWithAI } from "@/app/admin/(panel)/productos/ai";
+import type { QuickFill } from "@/lib/quick-fill";
+import { toJpeg } from "@/lib/to-jpeg";
 import { Field, btnGhost, btnPrimary, input } from "./ui";
 
 const PREFIX: Record<string, string> = {
@@ -103,6 +106,161 @@ function Photos({
         </label>
       )}
     </div>
+  );
+}
+
+// Dictado por voz del navegador (Chrome en Android lo trae). Si no hay, queda el micrófono del teclado.
+type Recognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((e: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+function getRecognition(): (new () => Recognition) | null {
+  if (typeof window === "undefined") return null;
+  const w = window as unknown as Record<string, unknown>;
+  return (w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null) as (new () => Recognition) | null;
+}
+
+// Carga rápida: fotos + una línea (escrita o dictada) y la IA completa el formulario de abajo.
+function QuickLoad({
+  images,
+  onUpload,
+  onRemove,
+  uploading,
+  onFill,
+}: {
+  images: string[];
+  onUpload: (files: FileList | null) => void;
+  onRemove: (src: string) => void;
+  uploading: boolean;
+  onFill: (d: QuickFill) => void;
+}) {
+  const [text, setText] = useState("");
+  const [listening, setListening] = useState(false);
+  const [canMic, setCanMic] = useState(false);
+  const [msg, setMsg] = useState<{ kind: "ok" | "warn" | "error"; text: string } | null>(null);
+  const [filling, startFill] = useTransition();
+  const rec = useRef<Recognition | null>(null);
+
+  useEffect(() => setCanMic(!!getRecognition()), []);
+  useEffect(() => () => rec.current?.stop(), []);
+
+  function toggleMic() {
+    if (listening) {
+      rec.current?.stop();
+      return;
+    }
+    const R = getRecognition();
+    if (!R) return;
+    const r = new R();
+    r.lang = "es-AR";
+    r.continuous = true;
+    r.interimResults = false;
+    r.onresult = (e) => {
+      let said = "";
+      for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) said += e.results[i][0].transcript;
+      if (said.trim()) setText((t) => `${t}${t && !t.endsWith(" ") ? " " : ""}${said.trim()}`);
+    };
+    r.onend = () => setListening(false);
+    r.onerror = () => setListening(false);
+    rec.current = r;
+    r.start();
+    setListening(true);
+  }
+
+  function fill() {
+    rec.current?.stop();
+    setMsg(null);
+    startFill(async () => {
+      try {
+        const jpgs = await Promise.all(images.slice(0, 4).map((src) => toJpeg(src, 768)));
+        const res = await fillWithAI(text, jpgs);
+        if (res.error || !res.data) {
+          setMsg({ kind: "error", text: res.error ?? "No se pudo completar." });
+          return;
+        }
+        onFill(res.data);
+        setMsg(
+          res.data.missing.length
+            ? { kind: "warn", text: `Listo. Falta: ${res.data.missing.join(", ")}. Completalo abajo y tocá Guardar.` }
+            : { kind: "ok", text: "Listo. Revisá abajo que esté todo bien y tocá Guardar." },
+        );
+      } catch {
+        setMsg({ kind: "error", text: "No se pudo completar. Probá de nuevo." });
+      }
+    });
+  }
+
+  return (
+    <section className="border border-accent bg-surface p-4 lg:col-span-2">
+      <h2 className="flex items-center gap-2 font-semibold">
+        <Sparkle size={18} weight="fill" className="text-accent" /> Carga rápida
+      </h2>
+      <p className="mb-4 text-xs text-muted">
+        Sacá las fotos y decí la prenda en una línea. Ej: «remera oversize negra y blanca, M 3, L 2, XL 1, 25 mil». La IA completa el formulario.
+      </p>
+      <div className="mb-4 flex flex-wrap gap-2">
+        {images.map((src, i) => (
+          <div key={src} className="relative h-24 w-20 overflow-hidden bg-line">
+            <Image src={src} alt={`Foto ${i + 1}`} fill sizes="80px" className="object-cover" />
+            <button type="button" onClick={() => onRemove(src)} aria-label="Sacar foto" className="absolute top-0 right-0 flex size-7 cursor-pointer items-center justify-center bg-ink/70 text-canvas">
+              <Trash size={12} />
+            </button>
+          </div>
+        ))}
+        {images.length < MAX_PHOTOS && (
+          <label className="flex h-24 w-20 cursor-pointer flex-col items-center justify-center gap-1 border border-dashed border-muted text-center text-[11px] text-muted hover:border-ink">
+            {uploading ? <CircleNotch size={20} className="animate-spin" /> : <UploadSimple size={20} />}
+            {uploading ? "Subiendo" : "Fotos"}
+            <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => { onUpload(e.target.files); e.target.value = ""; }} />
+          </label>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <label htmlFor="quick-text" className="sr-only">
+          Prenda en una línea
+        </label>
+        <textarea
+          id="quick-text"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={2}
+          maxLength={1000}
+          placeholder={canMic ? "Escribí o tocá el micrófono y hablá" : "Escribí, o usá el micrófono del teclado"}
+          className={`${input} h-auto flex-1 py-2`}
+        />
+        {canMic && (
+          <button
+            type="button"
+            onClick={toggleMic}
+            aria-label={listening ? "Dejar de escuchar" : "Hablar"}
+            className={`flex w-14 shrink-0 cursor-pointer flex-col items-center justify-center gap-0.5 text-[11px] font-semibold ${listening ? "animate-pulse bg-danger text-white" : "bg-accent text-on-accent"}`}
+          >
+            {listening ? <Stop size={22} weight="fill" /> : <Microphone size={22} weight="fill" />}
+            {listening ? "Listo" : "Hablar"}
+          </button>
+        )}
+      </div>
+      <button type="button" onClick={fill} disabled={filling || uploading || (!text.trim() && images.length === 0)} className={`${btnPrimary} mt-3 w-full sm:w-auto`}>
+        {filling ? <CircleNotch size={16} className="animate-spin" /> : <Sparkle size={16} weight="fill" />}
+        {filling ? "Completando..." : "Completar con IA"}
+      </button>
+      {msg && (
+        <p
+          role="status"
+          className={`mt-3 border-l-4 p-3 text-sm font-medium ${
+            msg.kind === "ok" ? "border-ok bg-ok-soft text-ok" : msg.kind === "warn" ? "border-warn bg-warn-soft text-warn" : "border-danger bg-danger-soft text-danger"
+          }`}
+        >
+          {msg.text}
+        </p>
+      )}
+    </section>
   );
 }
 
@@ -223,6 +381,43 @@ export function ProductForm({ initial, existingCodes }: { initial: ProductInput 
     });
   }
 
+  // Vuelca lo que armó la IA en el formulario. Las fotos ya subidas se reparten por color.
+  function applyFill(d: QuickFill) {
+    setP((x) => {
+      const imgs = x.images;
+      const hex = (h: string) => (/^#[0-9a-f]{6}$/i.test(h) ? h : "#888888");
+      const many = d.colors.length > 1;
+      const colors = many
+        ? d.colors.map((c) => ({ name: c.name.slice(0, 30), hex: hex(c.hex), images: c.photos.map((n) => imgs[n]).filter(Boolean) }))
+        : [];
+      if (many) {
+        const used = new Set(colors.flatMap((c) => c.images));
+        colors[0].images = [...colors[0].images, ...imgs.filter((src) => !used.has(src))];
+      }
+      const sizes = d.sizes.length ? [...new Set(d.sizes.map((s) => s.trim()).filter(Boolean))] : x.sizes;
+      const stock: Record<string, number> = {};
+      for (const s of d.stock) {
+        const color = many ? colors.find((c) => c.name.toLowerCase() === s.color.trim().toLowerCase())?.name : "";
+        if (color === undefined || !sizes.includes(s.size)) continue;
+        stock[stockKey(color, s.size)] = Math.max(0, s.qty);
+      }
+      const category = categories.some((c) => c.id === d.category) ? d.category : x.category;
+      return {
+        ...x,
+        name: d.name || x.name,
+        category,
+        id: x.isNewProduct ? suggestCode(category, existingCodes) : x.id,
+        price: d.price > 0 ? d.price : x.price,
+        oldPrice: d.oldPrice > d.price ? d.oldPrice : 0,
+        description: d.description || x.description,
+        color: many ? "" : (d.colors[0]?.name ?? x.color),
+        colors,
+        sizes,
+        stock,
+      };
+    });
+  }
+
   const setStock = (color: string, size: string, n: number) =>
     setP((x) => ({ ...x, stock: { ...x.stock, [stockKey(color, size)]: Math.max(0, Math.floor(n) || 0) } }));
 
@@ -240,6 +435,15 @@ export function ProductForm({ initial, existingCodes }: { initial: ProductInput 
 
   return (
     <form onSubmit={save} className="grid gap-8 lg:grid-cols-2">
+      {p.isNewProduct && (
+        <QuickLoad
+          images={p.images}
+          onUpload={(f) => void upload(f, "general")}
+          onRemove={(src) => set("images", p.images.filter((x) => x !== src))}
+          uploading={(uploading.general ?? 0) > 0}
+          onFill={applyFill}
+        />
+      )}
       <div className="space-y-5">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Categoría" htmlFor="category">
