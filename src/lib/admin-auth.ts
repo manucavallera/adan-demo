@@ -6,7 +6,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
 const COOKIE = "adan_admin";
-const DAYS = 30;
+const DAYS = 365;
 
 function secret() {
   const pass = process.env.ADMIN_PASSWORD;

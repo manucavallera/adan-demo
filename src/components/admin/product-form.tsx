@@ -187,8 +187,8 @@ function QuickLoad({
         onFill(res.data);
         setMsg(
           res.data.missing.length
-            ? { kind: "warn", text: `Listo. Falta: ${res.data.missing.join(", ")}. Completalo abajo y tocá Guardar.` }
-            : { kind: "ok", text: "Listo. Revisá abajo que esté todo bien y tocá Guardar." },
+            ? { kind: "warn", text: `Listo. Falta: ${res.data.missing.join(", ")}. Completalo abajo.` }
+            : { kind: "ok", text: "Listo. Revisá abajo cómo quedó." },
         );
       } catch {
         setMsg({ kind: "error", text: "No se pudo completar. Probá de nuevo." });
@@ -284,6 +284,10 @@ export function ProductForm({ initial, existingCodes }: { initial: ProductInput 
     },
   );
   const [error, setError] = useState("");
+  // Prenda nueva: primero solo la carga rápida; después de la IA, un resumen con Publicar.
+  // El formulario completo aparece al editar, con "Corregir algo" o con "Cargar a mano".
+  const [view, setView] = useState<"quick" | "summary" | "full">(initial ? "full" : "quick");
+  const [missing, setMissing] = useState<string[]>([]);
   // Qué tira de fotos está subiendo: "general" o el número de color.
   const [uploading, setUploading] = useState<Record<string, number>>({});
   const [saving, startSave] = useTransition();
@@ -383,6 +387,8 @@ export function ProductForm({ initial, existingCodes }: { initial: ProductInput 
 
   // Vuelca lo que armó la IA en el formulario. Las fotos ya subidas se reparten por color.
   function applyFill(d: QuickFill) {
+    setMissing(d.missing);
+    setView((v) => (v === "full" ? "full" : "summary"));
     setP((x) => {
       const imgs = x.images;
       const hex = (h: string) => (/^#[0-9a-f]{6}$/i.test(h) ? h : "#888888");
@@ -444,6 +450,75 @@ export function ProductForm({ initial, existingCodes }: { initial: ProductInput 
           onFill={applyFill}
         />
       )}
+      {view === "quick" && (
+        <button type="button" onClick={() => setView("full")} className="w-fit cursor-pointer text-sm text-muted underline underline-offset-4 hover:text-ink lg:col-span-2">
+          Prefiero cargar todo a mano
+        </button>
+      )}
+
+      {view === "summary" && (
+        <section className="border border-line bg-canvas p-4 lg:col-span-2">
+          <h2 className="mb-3 font-semibold">Así queda en la tienda</h2>
+          <div className="flex gap-4">
+            {(multi ? p.colors[0]?.images[0] : p.images[0]) && (
+              <div className="relative h-32 w-24 shrink-0 overflow-hidden bg-line">
+                <Image src={(multi ? p.colors[0].images[0] : p.images[0])!} alt={p.name} fill sizes="96px" className="object-cover" />
+              </div>
+            )}
+            <div className="min-w-0 space-y-1 text-sm">
+              <p className="text-base font-semibold">{p.name || "Sin nombre"}</p>
+              <p>
+                {p.price > 0 ? `$ ${p.price.toLocaleString("es-AR")}` : <span className="font-semibold text-warn">Sin precio</span>}
+                {p.oldPrice > p.price && <span className="ml-2 text-muted line-through">$ {p.oldPrice.toLocaleString("es-AR")}</span>}
+                <span className="text-muted"> · {categories.find((c) => c.id === p.category)?.label}</span>
+              </p>
+              {rows.map((r) => (
+                <p key={r.name}>
+                  {multi && <span className="font-medium">{r.name}: </span>}
+                  {!multi && p.color && <span className="font-medium">{p.color}: </span>}
+                  {p.sizes.map((sz) => `${sz} (${p.stock[stockKey(r.name, sz)] ?? 0})`).join(" · ")}
+                </p>
+              ))}
+              {p.description && <p className="text-muted">{p.description}</p>}
+            </div>
+          </div>
+
+          {!(p.price > 0) && (
+            <div className="mt-4 max-w-xs">
+              <Field label="¿A cuánto la vendés?" htmlFor="quick-price">
+                <input id="quick-price" type="number" inputMode="numeric" min={1} value={p.price || ""} onChange={(e) => set("price", Number(e.target.value))} placeholder="Ej: 25000" className={input} />
+              </Field>
+            </div>
+          )}
+          {!p.name.trim() && (
+            <div className="mt-4 max-w-xs">
+              <Field label="Nombre de la prenda" htmlFor="quick-name">
+                <input id="quick-name" value={p.name} onChange={(e) => set("name", e.target.value)} maxLength={80} className={input} />
+              </Field>
+            </div>
+          )}
+          {(missing.includes("stock") || Object.values(p.stock).every((n) => !n)) && (
+            <p className="mt-4 text-sm font-medium text-warn">No dijiste cuántas tenés: va a salir agotada. Tocá «Corregir algo» para cargar el stock.</p>
+          )}
+
+          {error && (
+            <p role="alert" className="mt-4 border-l-4 border-danger bg-danger-soft p-3 text-sm font-medium text-danger">
+              {error}
+            </p>
+          )}
+          <div className="mt-5 flex flex-wrap gap-3">
+            <button type="submit" disabled={saving || busy || !(p.price > 0) || !p.name.trim()} className={btnPrimary}>
+              {saving && <CircleNotch size={16} className="animate-spin" />} Publicar
+            </button>
+            <button type="button" onClick={() => setView("full")} className={btnGhost}>
+              Corregir algo
+            </button>
+          </div>
+        </section>
+      )}
+
+      {view === "full" && (
+      <>
       <div className="space-y-5">
         <div className="grid gap-5 sm:grid-cols-2">
           <Field label="Categoría" htmlFor="category">
@@ -696,6 +771,8 @@ export function ProductForm({ initial, existingCodes }: { initial: ProductInput 
           </button>
         )}
       </div>
+      </>
+      )}
     </form>
   );
 }
