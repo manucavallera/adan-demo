@@ -56,7 +56,7 @@ const SCHEMA = {
 const PROMPT = `Ayudás al dueño de una tienda de ropa de hombre de Argentina a cargar prendas en su catálogo.
 Te manda fotos de la prenda (numeradas desde 0, en el orden en que llegan) y una línea de texto, muchas veces dictada por voz, con errores o sin puntuación.
 Devolvé los datos para el formulario:
-- name: nombre corto y comercial en castellano, sin el color ni el talle (ej: "Remera oversize", "Pantalón de vestir slim").
+- name: nombre corto y comercial en castellano, sin el color ni el talle (ej: "Remera oversize", "Pantalón de vestir slim"). No pongas marcas (Nike, Vans, etc.) ni en el nombre ni en la descripción, salvo que el dueño la diga.
 - category: una de: ${categories.map((c) => `${c.id} (${c.label})`).join(", ")}.
 - price: precio en pesos, entero. "25 mil", "25 lucas" o "25k" = 25000. Si no lo dijo, 0. Nunca lo inventes.
 - oldPrice: si dice que está en oferta y da el precio de antes, ese precio. Si no, 0.
