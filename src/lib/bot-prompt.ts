@@ -5,17 +5,21 @@ import { discountOf, stockOf, type Product } from "./products";
 import { formatPrice, store, type Settings } from "./config";
 
 // "web": la demo del sitio, donde el sistema arma el link de pago.
+// "tienda": el chat real de la web; el cliente compra con el carrito de la página.
 // "whatsapp": el bot real en el WhatsApp de la tienda, donde el link lo manda el dueño.
-export type Channel = "web" | "whatsapp";
+export type Channel = "web" | "tienda" | "whatsapp";
 
 const INTRO: Record<Channel, string> = {
   web: "Esta es una demo para mostrarle al dueño cómo atenderías a sus clientes.",
+  tienda: "Estás atendiendo el chat de la página web de la tienda. Los clientes te escriben desde el sitio.",
   whatsapp:
     "Estás atendiendo el WhatsApp real de la tienda. Los clientes te escriben directo desde su celular.",
 };
 
 const PAYMENT_LINK: Record<Channel, string> = {
   web: "Cuando el cliente confirma producto, talle, entrega y forma de pago, mandás el link de pago (lo genera el sistema, vos solo avisás que se lo mandás).",
+  tienda:
+    "Cuando el cliente decide, decile que toque la tarjeta de la prenda (se la mostrás en \"productos\"), elija talle, la sume al carrito y pague desde el carrito. Si prefiere hablar con una persona, que toque el botón de WhatsApp. No inventes links, alias ni CBU. mandar_link_pago siempre en false.",
   whatsapp:
     "Cuando el cliente confirma producto, talle, entrega y forma de pago, avisale que en un ratito el dueño le manda el link de pago o los datos para transferir, y que con el comprobante le reservan la prenda. No inventes links, alias ni CBU.",
 };

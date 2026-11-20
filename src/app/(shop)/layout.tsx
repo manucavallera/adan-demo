@@ -20,7 +20,7 @@ export default async function ShopLayout({ children }: Readonly<{ children: Reac
         {children}
         <Footer settings={shop.settings} products={shop.products} />
         <CartDrawer />
-        {store.demoBot && <BotDemo />}
+        <BotDemo demo={store.demoBot} />
       </CartProvider>
     </ShopProvider>
   );

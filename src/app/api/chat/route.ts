@@ -3,6 +3,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { askBot, RefusalError, type InMsg } from "@/lib/bot";
 import { getShop } from "@/lib/shop";
+import { store } from "@/lib/config";
 
 export const runtime = "nodejs";
 
@@ -45,7 +46,7 @@ function limited(req: Request) {
 }
 
 export async function POST(req: Request) {
-  if (limited(req)) return json({ error: "Llegaste al límite de mensajes de la demo, probá en un rato" }, 429);
+  if (limited(req)) return json({ error: "Llegaste al límite de mensajes, probá en un rato o escribinos por WhatsApp" }, 429);
   let body: { messages?: unknown };
   try {
     body = await req.json();
@@ -55,7 +56,7 @@ export async function POST(req: Request) {
   if (!valid(body.messages)) return json({ error: "Conversación inválida o demasiado larga" }, 400);
 
   try {
-    return json(await askBot(body.messages, "web", await getShop()));
+    return json(await askBot(body.messages, store.demoBot ? "web" : "tienda", await getShop()));
   } catch (error) {
     if (error instanceof RefusalError) return json({ error: "El asistente no pudo responder eso" }, 422);
     if (error instanceof Anthropic.RateLimitError) return json({ error: "Muchas consultas juntas, probá en un ratito" }, 429);

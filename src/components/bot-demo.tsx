@@ -18,7 +18,7 @@ import {
 } from "@phosphor-icons/react";
 import { sizesOf, type Product } from "@/lib/products";
 import { useShop } from "./shop";
-import { formatPrice, store } from "@/lib/config";
+import { formatPrice, store, waLink } from "@/lib/config";
 
 // Demo del asistente de WhatsApp. Se ve como un chat y por detrás usa la IA real (/api/chat).
 // La pestaña "Vista del dueño" muestra lo que le llegaría al dueño: ficha del pedido y avisos.
@@ -55,6 +55,14 @@ type Msg = {
   handoff?: string;
   time: string;
 };
+
+// Sugerencias del chat real: no dependen de códigos ni prendas puntuales.
+const SUGGESTIONS_REAL = [
+  "Tengo un casamiento, ¿qué me pongo?",
+  "Mido 1,78 y peso 82, ¿qué talle de pantalón soy?",
+  "¿Hacen envíos? ¿Cuánto sale?",
+  "¿Qué formas de pago tienen?",
+];
 
 const SUGGESTIONS = [
   "¿Tenés el pantalón de vestir en 44?",
@@ -95,8 +103,9 @@ export function openBot(text?: string) {
   window.dispatchEvent(new CustomEvent("open-bot", { detail: text }));
 }
 
-export function BotDemo() {
-  const { products } = useShop();
+// demo=true: pestaña del dueño y pago simulado (para mostrar). demo=false: chat real de la tienda.
+export function BotDemo({ demo }: { demo: boolean }) {
+  const { products, settings } = useShop();
   const [open, setOpen] = useState(false);
   const [tab, setTab] = useState<"chat" | "owner">("chat");
   const [msgs, setMsgs] = useState<Msg[]>([]);
@@ -232,11 +241,11 @@ export function BotDemo() {
             whileHover={{ y: -3 }}
             whileTap={{ scale: 0.95 }}
             transition={{ type: "spring", stiffness: 400, damping: 22, delay: 0.8 }}
-            aria-label="Probá el asistente"
+            aria-label={demo ? "Probá el asistente" : "Chateá con nosotros"}
             className={`fixed right-4 bottom-4 z-30 h-14 w-14 cursor-pointer items-center justify-center gap-2 rounded-full bg-accent font-semibold text-on-accent shadow-[0_12px_32px_-8px_rgba(30,25,21,0.45)] md:right-8 md:bottom-8 md:flex md:w-auto md:rounded-none md:pr-5 md:pl-4 ${hideOnMobile ? "hidden" : "flex"}`}
           >
             <ChatCircleText size={26} weight="fill" />
-            <span className="hidden md:inline">Probá el asistente</span>
+            <span className="hidden md:inline">{demo ? "Probá el asistente" : "¿Te ayudo?"}</span>
           </motion.button>
         )}
       </AnimatePresence>
@@ -245,7 +254,7 @@ export function BotDemo() {
         {open && (
           <motion.section
             role="dialog"
-            aria-label="Demo del asistente de WhatsApp"
+            aria-label={demo ? "Demo del asistente de WhatsApp" : "Chat de la tienda"}
             initial={{ opacity: 0, y: 40, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 40, scale: 0.97 }}
@@ -267,6 +276,7 @@ export function BotDemo() {
               </button>
             </header>
 
+            {demo && (
             <div role="tablist" className="grid grid-cols-2 border-b border-line text-sm font-semibold">
               {(
                 [
@@ -290,31 +300,32 @@ export function BotDemo() {
                 </button>
               ))}
             </div>
+            )}
 
-            {tab === "chat" ? (
+            {!demo || tab === "chat" ? (
               <>
                 <div ref={scroller} className="flex-1 space-y-2 overflow-y-auto bg-[#efeae2] px-3 py-4 dark:bg-[#0b141a]">
                   <p className="mx-auto w-fit bg-[#fff6c5] px-3 py-1.5 text-center text-xs text-[#54656f] dark:bg-[#182229] dark:text-[#ffd279]">
-                    Demo con IA real. Escribí como si fueras un cliente.
+                    {demo ? "Demo con IA real. Escribí como si fueras un cliente." : "Asistente virtual. Te ayuda a elegir prenda y talle."}
                   </p>
                   {msgs.length === 0 && (
                     <div className="space-y-2 pt-4">
-                      {SUGGESTIONS.map((s) => (
+                      {(demo ? SUGGESTIONS : SUGGESTIONS_REAL).map((s) => (
                         <button key={s} type="button" onClick={() => send(s)} className="block w-fit cursor-pointer border border-[#d1d7db] bg-white px-3 py-2 text-left text-sm text-[#111b21] transition-transform active:scale-[0.98] dark:border-[#2a3942] dark:bg-[#202c33] dark:text-[#e9edef]">
                           {s}
                         </button>
                       ))}
-                      <button
+                      {demo && <button
                         type="button"
                         onClick={async () => send("Hola, ¿cuánto sale esta?", await toJpeg("/img/adan/estado-ejemplo.jpg"))}
                         className="flex w-fit cursor-pointer items-center gap-2 border border-[#d1d7db] bg-white px-3 py-2 text-sm text-[#111b21] transition-transform active:scale-[0.98] dark:border-[#2a3942] dark:bg-[#202c33] dark:text-[#e9edef]"
                       >
                         <Camera size={16} /> Mandar captura de un estado
-                      </button>
+                      </button>}
                     </div>
                   )}
                   {msgs.map((m, i) => (
-                    <Bubble key={i} m={m} paid={paid} onPay={pay} />
+                    <Bubble key={i} m={m} paid={paid} onPay={pay} demo={demo} wa={waLink(settings.whatsapp, "Hola! Vengo del chat de la web")} />
                   ))}
                   {typing && (
                     <div className="flex w-fit gap-1 bg-white px-4 py-3 dark:bg-[#202c33]">
@@ -378,7 +389,7 @@ export function BotDemo() {
   );
 }
 
-function Bubble({ m, paid, onPay }: { m: Msg; paid: boolean; onPay: (total: number) => void }) {
+function Bubble({ m, paid, onPay, demo, wa }: { m: Msg; paid: boolean; onPay: (total: number) => void; demo: boolean; wa: string }) {
   const { products, settings } = useShop();
   const mine = m.role === "user";
   return (
@@ -414,7 +425,7 @@ function Bubble({ m, paid, onPay }: { m: Msg; paid: boolean; onPay: (total: numb
         );
       })}
 
-      {m.pay !== undefined && (
+      {demo && m.pay !== undefined && (
         <div className="w-64 max-w-[85%] bg-white p-3 text-[#111b21] shadow-sm dark:bg-[#202c33] dark:text-[#e9edef]">
           <p className="text-xs text-[#667781] dark:text-[#8696a0]">mercadopago.com.ar</p>
           <p className="font-semibold">Pagá tu pedido de {store.name}</p>
@@ -432,7 +443,13 @@ function Bubble({ m, paid, onPay }: { m: Msg; paid: boolean; onPay: (total: numb
         </div>
       )}
 
-      {m.handoff && (
+      {m.handoff && !demo && (
+        <a href={wa} target="_blank" rel="noopener noreferrer" className="w-fit bg-[#00a884] px-4 py-2 text-sm font-semibold text-white">
+          Seguir por WhatsApp
+        </a>
+      )}
+
+      {m.handoff && demo && (
         <p className="mx-auto w-fit bg-[#fff6c5] px-3 py-1.5 text-center text-xs text-[#54656f] dark:bg-[#182229] dark:text-[#ffd279]">
           Chat pasado al dueño: {m.handoff}
         </p>
