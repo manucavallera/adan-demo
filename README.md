@@ -4,9 +4,12 @@ Tienda online para una marca de indumentaria masculina, con panel para el dueño
 
 > **English summary.** Online store for a menswear brand with an owner dashboard and an AI sales assistant (Claude) that answers customers on WhatsApp and on the website. It reads the live catalog and stock from PostgreSQL, recommends sizes, fills in the order as structured data, and hands the conversation to the owner when needed. Built with Next.js, Prisma, PostgreSQL, Mercado Pago and the WhatsApp Cloud API, deployed with Docker.
 
-**Demo:** _[link a la demo]_ · **Video (1 min):** _[link al video]_
+**En producción:** [adanindumentaria.com](https://adanindumentaria.com)
 
-<!-- Captura principal: tienda + chat del asistente -->
+<p>
+  <img src="docs/img/tienda.jpg" alt="Página principal de la tienda" width="68%" />
+  <img src="docs/img/asistente.jpg" alt="Chat del asistente de ventas con preguntas sugeridas" width="24%" />
+</p>
 
 ---
 
