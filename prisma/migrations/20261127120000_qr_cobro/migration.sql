@@ -1,0 +1,1 @@
+ALTER TABLE "Settings" ADD COLUMN "transferQr" TEXT NOT NULL DEFAULT '';

@@ -107,6 +107,7 @@ model Settings {
   transferAlias    String @default("")
   transferCbu      String @default("")
   transferHolder   String @default("")
+  transferQr       String @default("") // foto del QR para cobrar (ej: +Pagos Nación); vacío = sin QR
   // Datos legales que se muestran al pie de la web (Ley 24.240 y Resolución 424/2020).
   legalName        String @default("") // nombre y apellido o razón social
   cuit             String @default("")

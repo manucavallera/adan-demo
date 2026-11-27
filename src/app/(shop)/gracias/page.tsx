@@ -46,12 +46,23 @@ export default async function ThanksPage({ searchParams }: { searchParams: Promi
               ) : (
                 <p className="mt-2 text-muted">Te los mandamos por WhatsApp.</p>
               )}
+              {settings.transferQr && (
+                <div className="mt-4">
+                  <p className="text-sm text-muted">O escaneá este QR con cualquier billetera o app de banco:</p>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={settings.transferQr} alt="QR para pagar" className="mt-2 size-56 border border-line bg-white object-contain" />
+                  <a href={settings.transferQr} download="qr-pago.webp" className="mt-2 inline-block text-sm font-semibold underline">
+                    Descargar QR
+                  </a>
+                  <p className="mt-1 text-xs text-muted">Si estás en el celu, descargalo y subilo desde tu billetera, o copiá el alias.</p>
+                </div>
+              )}
               <p className="mt-3 text-sm text-muted">Mandanos el comprobante por WhatsApp con el número de pedido.</p>
             </div>
           )}
           {order.payment === "mercadopago" &&
             (!mpEnabled() ? (
-              <p>En un ratito te mandamos por WhatsApp el link de pago de Mercado Pago.</p>
+              <p>En un ratito te mandamos por WhatsApp el link de pago.</p>
             ) : order.status !== "PENDIENTE" || order.mpPaymentId || status === "approved" ? (
               <p>Tu pago con Mercado Pago está aprobado. Te escribimos por WhatsApp para coordinar la entrega.</p>
             ) : status === "pending" || status === "in_process" ? (

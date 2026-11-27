@@ -7,6 +7,7 @@ import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { Field, Notice, PageTitle, btnPrimary, input } from "@/components/admin/ui";
 import { ZonesEditor } from "@/components/admin/zones-editor";
 import { parseZones } from "@/lib/config";
+import { deleteImage, saveImage } from "@/lib/uploads";
 
 const TEXT = ["whatsapp", "address", "city", "hours", "installments", "transferAlias", "transferCbu", "transferHolder", "legalName", "cuit", "email"] as const;
 const NUM = ["shippingCost", "freeShippingFrom", "transferDiscount"] as const;
@@ -30,6 +31,16 @@ async function save(formData: FormData) {
     zones = JSON.parse(String(formData.get("shippingZones") ?? "[]"));
   } catch {}
   data.shippingZones = parseZones(zones);
+  // QR para cobrar: foto nueva reemplaza a la anterior; "Sacar QR" la borra.
+  const qr = formData.get("transferQr");
+  const old = (await prisma.settings.findUnique({ where: { id: 1 }, select: { transferQr: true } }))?.transferQr ?? "";
+  if (qr instanceof File && qr.size > 0 && qr.type.startsWith("image/")) {
+    data.transferQr = await saveImage(await qr.arrayBuffer());
+    await deleteImage(old);
+  } else if (formData.get("removeQr") === "1") {
+    data.transferQr = "";
+    await deleteImage(old);
+  }
   await prisma.settings.upsert({ where: { id: 1 }, update: data, create: { id: 1, ...data } });
   revalidateShop();
   revalidatePath("/admin/ajustes");
@@ -40,7 +51,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const { ok } = await searchParams;
   const s = (await prisma.settings.findUnique({ where: { id: 1 } })) ?? {
     whatsapp: "", address: "", city: "", hours: "", installments: "", shippingCost: 0, freeShippingFrom: 0, shippingZones: [],
-    transferDiscount: 0, transferAlias: "", transferCbu: "", transferHolder: "", legalName: "", cuit: "", email: "", ignoredNumbers: "",
+    transferDiscount: 0, transferAlias: "", transferCbu: "", transferHolder: "", transferQr: "", legalName: "", cuit: "", email: "", ignoredNumbers: "",
   };
 
   return (
@@ -92,6 +103,22 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
           <Field label="Titular de la cuenta" htmlFor="transferHolder">
             <input id="transferHolder" name="transferHolder" defaultValue={s.transferHolder} className={input} />
           </Field>
+          <Field
+            label="QR para cobrar"
+            htmlFor="transferQr"
+            hint="Foto o captura del QR de tu cuenta (ej: +Pagos Nación). Sale junto al alias cuando el cliente elige transferencia."
+          >
+            <input id="transferQr" name="transferQr" type="file" accept="image/*" className={input + " py-2"} />
+          </Field>
+          {s.transferQr && (
+            <div className="flex items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={s.transferQr} alt="QR cargado" className="size-24 border border-line bg-white object-contain" />
+              <label className="flex items-center gap-2 text-sm">
+                <input type="checkbox" name="removeQr" value="1" /> Sacar QR
+              </label>
+            </div>
+          )}
         </fieldset>
 
         <fieldset className="grid gap-5">

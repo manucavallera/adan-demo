@@ -51,6 +51,7 @@ const DEFAULT_SETTINGS: Settings = {
   transferAlias: "",
   transferCbu: "",
   transferHolder: "",
+  transferQr: "",
   legalName: "",
   cuit: "",
   email: "",
@@ -68,7 +69,7 @@ export const getShop = unstable_cache(
       const { id, ignoredNumbers, shippingZones, ...rest } = s; // la lista de ignorados no va a la web
       settings = { ...rest, shippingZones: parseZones(shippingZones) };
     }
-    return { products: rows.map(toProduct), settings };
+    return { products: rows.map(toProduct), settings: { ...settings, mpOn: Boolean(process.env.MP_ACCESS_TOKEN) } };
   },
   ["shop"],
   { tags: [TAG] },

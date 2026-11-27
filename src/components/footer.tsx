@@ -12,7 +12,9 @@ export function Footer({ settings, products }: { settings: Settings; products: P
       text: settings.freeShippingFrom > 0 ? `A todo el país. Gratis desde ${formatPrice(settings.freeShippingFrom)}.` : "A todo el país.",
     },
     { icon: ArrowsClockwise, title: "Cambios", text: "Tenés 30 días para cambiar talle o prenda." },
-    { icon: CreditCard, title: "Pagos", text: `${settings.installments ? `${settings.installments} con Mercado Pago` : "Mercado Pago"}. También transferencia o efectivo.` },
+    { icon: CreditCard, title: "Pagos", text: settings.mpOn
+        ? `${settings.installments ? `${settings.installments} con Mercado Pago` : "Mercado Pago"}. También transferencia o efectivo.`
+        : `Tarjeta o débito con link de pago, transferencia${settings.transferQr ? ", QR" : ""} o efectivo.` },
   ];
 
   return (

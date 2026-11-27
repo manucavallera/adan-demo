@@ -21,6 +21,8 @@ export type Settings = {
   transferAlias: string;
   transferCbu: string;
   transferHolder: string;
+  transferQr: string; // ruta de la foto del QR, vacío = sin QR
+  mpOn?: boolean; // Mercado Pago conectado (lo agrega getShop)
   legalName: string;
   cuit: string;
   email: string;

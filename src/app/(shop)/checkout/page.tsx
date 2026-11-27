@@ -227,8 +227,14 @@ export default function CheckoutPage() {
             <div className="grid gap-3">
               {(
                 [
-                  ["mercadopago", "Mercado Pago", settings.installments || "Tarjeta, débito o dinero en cuenta"],
-                  ["transferencia", "Transferencia", settings.transferDiscount > 0 ? `${settings.transferDiscount}% de descuento` : "Te pasamos los datos"],
+                  settings.mpOn
+                    ? ["mercadopago", "Mercado Pago", settings.installments || "Tarjeta, débito o dinero en cuenta"]
+                    : ["mercadopago", "Tarjeta o débito", "Te mandamos el link de pago por WhatsApp"],
+                  [
+                    "transferencia",
+                    settings.transferQr ? "Transferencia o QR" : "Transferencia",
+                    settings.transferDiscount > 0 ? `${settings.transferDiscount}% de descuento` : "Te pasamos los datos",
+                  ],
                   ...(delivery === "retiro" ? [["efectivo", "Efectivo al retirar", "Pagás en el local"]] : []),
                 ] as [Payment, string, string][]
               ).map(([value, title, sub]) => (

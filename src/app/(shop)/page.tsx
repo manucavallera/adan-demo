@@ -129,7 +129,9 @@ export default async function Home() {
             <ol className="mt-5 space-y-3 text-muted">
               <li>Elegís la prenda y tu talle.</li>
               <li>
-                Pagás con Mercado Pago: tarjeta, débito o dinero en cuenta.
+                {settings.mpOn
+                  ? "Pagás con Mercado Pago: tarjeta, débito o dinero en cuenta."
+                  : `Pagás con tarjeta o débito (link de pago), transferencia${settings.transferQr ? " o QR" : ""}.`}
               </li>
               <li>Te llega por correo o la retirás en el local.</li>
             </ol>
